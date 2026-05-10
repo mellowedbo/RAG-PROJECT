@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AnalysisSession {
+  id          String   @id @default(cuid())
+  title       String
+  domain      String   // "finance", "risk", "compliance", "market"
+  status      String   @default("processing") // "processing", "completed", "failed"
+  summary     String?
+  insights    String?  // JSON string of insights
+  metrics     String?  // JSON string of metrics
+  agentSteps  String?  // JSON string of agentic workflow steps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FinancialDocument {
+  id          String   @id @default(cuid())
+  filename    String
+  docType     String   // "annual_report", "10k", "earnings", "market_brief", "risk_assessment"
+  sector      String?
+  content     String?  // extracted text
+  status      String   @default("uploaded") // "uploaded", "indexed", "analyzed"
+  sessionId   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AgentTrace {
+  id          String   @id @default(cuid())
+  sessionId   String
+  agentName   String   // "ingestion_agent", "retrieval_agent", "reasoning_agent", "synthesis_agent"
+  stepOrder   Int
+  action      String
+  input       String?  // JSON
+  output      String?  // JSON
+  duration    Int?     // ms
+  status      String   @default("running") // "running", "completed", "failed"
+  createdAt   DateTime @default(now())
+}
