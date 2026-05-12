@@ -1,30 +1,47 @@
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║  NEXUS — Agentic RAG for Financial Intelligence | Google Colab Notebook ║
 # ║  4-Agent Pipeline: Ingestion → Retrieval → Reasoning → Synthesis       ║
-# ║  Powered by Google Gemini 2.0 Flash (Free Tier)                        ║
+# ║  Powered by nexus_core package + Google Gemini 2.0 Flash               ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 #
-# Paste this entire file into a single Colab cell, or split at the
-# "# ═══ CELL BREAK ═══" markers for multi-cell usage.
+# Split at the "# ═══ CELL BREAK ═══" markers for multi-cell Colab usage.
 # Get a free Gemini API key at: https://aistudio.google.com/apikey
 # ════════════════════════════════════════════════════════════════════════════
 
-# ═══ CELL 1: Install Dependencies ═════════════════════════════════════════
+# ═══ CELL 0: Clone and Install ════════════════════════════════════════════
 
-!pip install -q google-generativeai pandas matplotlib
+!git clone https://github.com/mellowedbo/RAG-PROJECT.git /content/nexus
+%cd /content/nexus
+!pip install -q -e . google-generativeai pandas matplotlib
 
 import os, sys, json, re, math, time, textwrap
 from datetime import datetime
 from collections import Counter
 
-import google.generativeai as genai
+import numpy as np
 import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import numpy as np
 
-# ─── ANSI Color Codes for Terminal Output ─────────────────────────────────
+from nexus_core import (
+    chunk_text_recursive,
+    compute_idf,
+    tfidf_score,
+    retrieve_tfidf,
+    cosine_similarity,
+    retrieve_embedding,
+    configure_gemini,
+    get_embeddings,
+    get_single_embedding,
+    get_mock_embeddings,
+    VectorStore,
+    generate_answer,
+    scan_compliance,
+    COMPLIANCE_PATTERNS,
+)
+
+# ─── ANSI Color Codes ─────────────────────────────────────────
 class C:
     """ANSI escape codes for colorful terminal output in Colab."""
     RESET   = "\033[0m"
@@ -45,22 +62,18 @@ class C:
     BG_CYAN   = "\033[46m"
 
 def banner(text, color=C.CYAN, width=68):
-    """Print a styled banner."""
     print(f"\n{color}{C.BOLD}{'═' * width}{C.RESET}")
     print(f"{color}{C.BOLD}  {text}{C.RESET}")
     print(f"{color}{C.BOLD}{'═' * width}{C.RESET}\n")
 
 def section(text, color=C.BLUE):
-    """Print a section header."""
     print(f"\n{color}{C.BOLD}▶ {text}{C.RESET}")
     print(f"{color}{'─' * 60}{C.RESET}")
 
 def status(msg, icon="✓", color=C.GREEN):
-    """Print a status message with icon."""
     print(f"  {color}{icon}{C.RESET} {msg}")
 
 def progress_bar(current, total, width=40, prefix=""):
-    """Display a simple text progress bar."""
     pct = current / max(total, 1)
     filled = int(width * pct)
     bar = "█" * filled + "░" * (width - filled)
@@ -69,37 +82,35 @@ def progress_bar(current, total, width=40, prefix=""):
     if current == total:
         print()
 
-# ═══ CELL 2: Configure Gemini API ═════════════════════════════════════════
+# ═══ CELL 1: Configure API ════════════════════════════════════════════════
 
 banner("NEXUS — Agentic RAG for Financial Intelligence", C.MAGENTA)
 print(f"  {C.DIM}Pipeline: Ingestion → Retrieval → Reasoning → Synthesis{C.RESET}")
-print(f"  {C.DIM}Model: Google Gemini 2.0 Flash (Free Tier){C.RESET}")
+print(f"  {C.DIM}Package: nexus_core v1.0.0{C.RESET}")
 print(f"  {C.DIM}Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{C.RESET}\n")
 
 section("Configuring Gemini API", C.BLUE)
 
-# Try Colab secrets first, then fall back to user input
 GEMINI_KEY = None
 try:
     from google.colab import userdata
     GEMINI_KEY = userdata.get('GOOGLE_API_KEY')
     status("API key loaded from Colab secrets", "🔑", C.GREEN)
-except:
+except Exception:
     pass
 
 if not GEMINI_KEY:
     GEMINI_KEY = input("  Enter your Gemini API key (free at aistudio.google.com/apikey): ").strip()
 
 if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
-    model = genai.GenerativeModel('gemini-2.0-flash')
+    os.environ["GEMINI_API_KEY"] = GEMINI_KEY
+    configure_gemini(GEMINI_KEY)
     status("Gemini 2.0 Flash API configured successfully", "✓", C.GREEN)
 else:
-    model = None
-    status("No API key provided — LLM synthesis will be skipped", "⚠", C.YELLOW)
+    status("No API key — LLM synthesis will use template fallback", "⚠", C.YELLOW)
     status("Retrieval and reasoning pipeline still works without LLM", "i", C.CYAN)
 
-# ═══ CELL 3: Load Financial Documents ═════════════════════════════════════
+# ═══ CELL 2: Load Sample Documents ════════════════════════════════════════
 
 section("Loading Financial Documents", C.BLUE)
 
@@ -207,7 +218,6 @@ documents = [
     },
 ]
 
-# Display document metadata
 for i, doc in enumerate(documents):
     progress_bar(i + 1, len(documents), prefix="Loading")
     print(f"  {C.BOLD}{doc['title']}{C.RESET}")
@@ -217,87 +227,40 @@ for i, doc in enumerate(documents):
 
 status(f"{len(documents)} documents loaded ({sum(len(d['content']) for d in documents):,} total characters)")
 
-# ═══ CELL 4: Agent 1 — Ingestion (Chunking Engine) ════════════════════════
+# ═══ CELL 3: Chunk, Embed, Store ═════════════════════════════════════════
 
-section("AGENT 1: INGESTION — Document Chunking", C.MAGENTA)
+section("AGENT 1: INGESTION — Recursive Chunking", C.MAGENTA)
 
-def chunk_text(text, max_size=600, overlap=80):
-    """
-    Split text into overlapping chunks for retrieval.
+print(f"\n  {C.BOLD}Chunking Configuration:{C.RESET}")
+print(f"    Max chunk size:  800 characters")
+print(f"    Overlap:         120 characters")
+print(f"    Min chunk size:  80 characters")
+print(f"    Strategy:        Recursive with section-heading detection")
+print()
 
-    Strategy: Split on paragraph boundaries first. If a paragraph
-    exceeds max_size, split on sentence boundaries. Maintain overlap
-    between consecutive chunks for context continuity.
-
-    Args:
-        text: Raw document text
-        max_size: Maximum chunk size in characters
-        overlap: Number of characters to overlap between chunks
-
-    Returns:
-        List of chunk strings
-    """
-    paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
-    chunks = []
-    current = ""
-
-    for para in paragraphs:
-        # If a single paragraph is too long, split on sentences
-        if len(para) > max_size:
-            sentences = re.split(r'(?<=[.!?])\s+', para)
-            for sent in sentences:
-                if len(current) + len(sent) > max_size and len(current) > 80:
-                    chunks.append(current.strip())
-                    # Overlap: keep last N characters
-                    current = current[-overlap:] + " " + sent
-                else:
-                    current = current + " " + sent if current else sent
-        elif len(current) + len(para) > max_size and len(current) > 80:
-            chunks.append(current.strip())
-            current = current[-overlap:] + "\n\n" + para
-        else:
-            current = current + "\n\n" + para if current else para
-
-    if current.strip():
-        chunks.append(current.strip())
-
-    return chunks
-
-# Process all documents with progress bar
 all_chunks = []
 chunk_metadata = []
 
-print(f"\n  {C.BOLD}Chunking Configuration:{C.RESET}")
-print(f"    Max chunk size:  600 characters")
-print(f"    Overlap:         80 characters")
-print(f"    Strategy:        Paragraph-first with sentence fallback")
-print()
-
 for i, doc in enumerate(documents):
     progress_bar(i + 1, len(documents), prefix="Chunking")
-    chunks = chunk_text(doc["content"])
-    for j, chunk in enumerate(chunks):
-        all_chunks.append({
-            "doc_title": doc["title"],
-            "doc_type": doc["type"],
-            "ticker": doc["ticker"],
-            "chunk_index": j,
-            "content": chunk,
-            "char_count": len(chunk),
-            "word_count": len(chunk.split()),
-        })
+    raw_chunks = chunk_text_recursive(doc["content"], chunk_size=800, overlap=120, min_chunk_size=80)
+    for j, chunk in enumerate(raw_chunks):
+        chunk["doc_title"] = doc["title"]
+        chunk["doc_type"] = doc["type"]
+        chunk["ticker"] = doc["ticker"]
+        chunk["doc_index"] = i
+        all_chunks.append(chunk)
     chunk_metadata.append({
         "title": doc["title"],
         "ticker": doc["ticker"],
-        "num_chunks": len(chunks),
-        "avg_chunk_size": sum(len(c) for c in chunks) / max(len(chunks), 1),
-        "total_chars": sum(len(c) for c in chunks),
+        "num_chunks": len(raw_chunks),
+        "avg_chunk_size": sum(c["char_count"] for c in raw_chunks) / max(len(raw_chunks), 1),
+        "total_chars": sum(c["char_count"] for c in raw_chunks),
     })
 
 print()
 status(f"{len(all_chunks)} chunks created from {len(documents)} documents")
 
-# Build DataFrame summary
 chunk_df = pd.DataFrame(all_chunks)
 summary_df = pd.DataFrame(chunk_metadata)
 
@@ -308,95 +271,39 @@ for _, row in summary_df.iterrows():
     print(f"    {C.GREEN}{row['ticker']:<5}{C.RESET} │ {C.CYAN}{bar}{C.RESET} {row['num_chunks']} chunks "
           f"(avg {row['avg_chunk_size']:.0f} chars)")
 
-# ═══ CELL 5: Agent 2 — Retrieval (TF-IDF Search) ═════════════════════════
+# ─── Embed & Store ────────────────────────────────────────────
+section("EMBEDDING & VECTOR STORE", C.BLUE)
 
-section("AGENT 2: RETRIEVAL — TF-IDF Vector Space Model", C.BLUE)
-
-def compute_idf(chunks_list):
-    """Compute inverse document frequency for all terms across chunks."""
-    N = len(chunks_list)
-    doc_freq = Counter()
-    for chunk in chunks_list:
-        terms = set(re.findall(r'[a-z]{3,}', chunk["content"].lower()))
-        for term in terms:
-            doc_freq[term] += 1
-    idf = {}
-    for term, df in doc_freq.items():
-        idf[term] = math.log((N + 1) / (df + 1)) + 1  # smoothed IDF
-    return idf
-
-# Pre-compute IDF across all chunks
+# Compute IDF index
 idf_cache = compute_idf(all_chunks)
+status(f"IDF index built over {len(idf_cache):,} unique terms")
 
-def tfidf_score(query, chunk_text, idf_dict):
-    """
-    Compute TF-IDF similarity between query and chunk.
+# Generate embeddings (mock if no API key)
+section("Generating Embeddings", C.CYAN)
 
-    Uses term frequency in chunk weighted by IDF,
-    with sublinear TF scaling to prevent long chunks from dominating.
-    """
-    q_terms = set(re.findall(r'[a-z]{3,}', query.lower()))
-    c_terms = re.findall(r'[a-z]{3,}', chunk_text.lower())
+embeddings = get_mock_embeddings([c["content"] for c in all_chunks])
+status(f"{len(embeddings)} mock embeddings generated (dim={len(embeddings[0])})")
 
-    if not q_terms or not c_terms:
-        return 0.0
+# Populate vector store
+store = VectorStore()
+for i, (chunk, emb) in enumerate(zip(all_chunks, embeddings)):
+    store.add(f"chunk-{i}", emb, chunk)
+status(f"VectorStore populated with {len(store)} entries")
 
-    # Term frequency with sublinear scaling
-    c_counter = Counter(c_terms)
-    score = 0.0
-    matched = 0
+# ═══ CELL 4: Run Queries Through Full Pipeline ══════════════════════════
 
-    for term in q_terms:
-        if term in c_counter:
-            tf = 1 + math.log(c_counter[term])  # sublinear TF
-            term_idf = idf_dict.get(term, 1.0)
-            score += tf * term_idf
-            matched += 1
-
-    # Normalize by query length to reward high coverage
-    coverage = matched / len(q_terms)
-    # Normalize by document length to prevent length bias
-    norm = math.sqrt(sum((1 + math.log(v)) ** 2 for v in c_counter.values()))
-
-    return (score * coverage) / max(norm, 1e-8)
-
-status(f"IDF index built over {len(idf_cache)} unique terms")
-
-def retrieve(query, top_k=6):
-    """
-    Retrieve top-k chunks by TF-IDF similarity.
-
-    Args:
-        query: Natural language query string
-        top_k: Number of results to return
-
-    Returns:
-        List of (score, chunk_dict) tuples, sorted by score descending
-    """
-    scored = []
-    for chunk in all_chunks:
-        score = tfidf_score(query, chunk["content"], idf_cache)
-        scored.append((score, chunk))
-    scored.sort(key=lambda x: -x[0])
-    return scored[:top_k]
-
-# ═══ CELL 6: Agent 3 — Reasoning (Scoring & Ranking) ═════════════════════
-
-section("AGENT 3: REASONING — Multi-Signal Scoring & Ranking", C.YELLOW)
+section("AGENT 2: RETRIEVAL — TF-IDF + Vector Search", C.BLUE)
 
 def reason_and_rank(query, retrieved_chunks):
     """
-    Apply multi-signal reasoning to re-rank retrieved chunks.
+    Multi-signal reasoning to re-rank retrieved chunks.
 
     Signals:
     1. TF-IDF relevance score (primary)
-    2. Document type priority (10-K > Risk Assessment > Earnings for risk queries)
-    3. Chunk position bonus (earlier chunks often contain key information)
-    4. Term density bonus (concentration of query terms in chunk)
-    5. Entity-specific relevance (ticker/sector match with query terms)
-
-    Returns:
-        List of dicts with composite scores and signal breakdowns
+    2. Document type priority
+    3. Chunk position bonus
+    4. Term density bonus
+    5. Entity-specific relevance
     """
     q_terms = set(re.findall(r'[a-z]{3,}', query.lower()))
     is_risk_query = any(t in q_terms for t in ['risk', 'compliance', 'violation', 'sanctions',
@@ -408,11 +315,11 @@ def reason_and_rank(query, retrieved_chunks):
                                                'property', 'office'])
 
     ranked = []
-    for tfidf, chunk in retrieved_chunks:
-        if tfidf <= 0:
+    for tfidf_val, chunk in retrieved_chunks:
+        if tfidf_val <= 0:
             continue
 
-        signals = {"tfidf": tfidf}
+        signals = {"tfidf": tfidf_val}
 
         # Signal 2: Document type priority based on query intent
         type_boost = 0
@@ -422,12 +329,12 @@ def reason_and_rank(query, retrieved_chunks):
             type_boost = {"10-K Filing": 0.15, "Risk Assessment": 0.05, "Quarterly Earnings": 0.15}
         elif is_cre_query:
             type_boost = {"Risk Assessment": 0.25, "10-K Filing": 0.10, "Quarterly Earnings": 0.05}
-        signals["type_boost"] = type_boost.get(chunk["doc_type"], 0)
+        signals["type_boost"] = type_boost.get(chunk.get("doc_type", ""), 0)
 
         # Signal 3: Chunk position bonus (diminishing)
-        signals["position"] = max(0, 0.05 * (1 - chunk["chunk_index"] / 10))
+        signals["position"] = max(0, 0.05 * (1 - chunk.get("chunk_index", 0) / 10))
 
-        # Signal 4: Term density (how concentrated are matches)
+        # Signal 4: Term density
         c_terms = re.findall(r'[a-z]{3,}', chunk["content"].lower())
         if c_terms:
             matched = sum(1 for t in c_terms if t in q_terms)
@@ -436,16 +343,15 @@ def reason_and_rank(query, retrieved_chunks):
             signals["density"] = 0
 
         # Signal 5: Entity/ticker relevance
-        ticker_mentioned = chunk["ticker"].lower() in query.lower()
+        ticker_mentioned = chunk.get("ticker", "").lower() in query.lower()
         signals["entity"] = 0.12 if ticker_mentioned else 0
 
-        # Compute composite score
         composite = (
-            signals["tfidf"] * 1.0 +
-            signals["type_boost"] +
-            signals["position"] +
-            signals["density"] +
-            signals["entity"]
+            signals["tfidf"] * 1.0
+            + signals["type_boost"]
+            + signals["position"]
+            + signals["density"]
+            + signals["entity"]
         )
         signals["composite"] = composite
 
@@ -455,79 +361,14 @@ def reason_and_rank(query, retrieved_chunks):
             "composite": composite,
         })
 
-    # Sort by composite score
     ranked.sort(key=lambda x: -x["composite"])
     return ranked
 
-status("Multi-signal reasoning engine initialized")
-print(f"  Signals: TF-IDF, Doc-Type Priority, Position, Term Density, Entity Match")
-
-# ═══ CELL 7: Agent 4 — Synthesis (Gemini LLM) ═══════════════════════════
 
 section("AGENT 4: SYNTHESIS — Gemini LLM Integration", C.GREEN)
+status("Synthesis agent ready (Gemini 2.0 Flash)" if GEMINI_KEY else "Synthesis agent in template mode (no API key)")
 
-def synthesize(question, ranked_results):
-    """
-    Synthesize an answer using Gemini 2.0 Flash with retrieved context.
-
-    If no API key was provided, generates a template-based response
-    using the ranked chunks directly.
-    """
-    # Build rich context from ranked results
-    context_parts = []
-    for i, r in enumerate(ranked_results[:6]):
-        chunk = r["chunk"]
-        signals = r["signals"]
-        context_parts.append(
-            f"[Source {i+1}: {chunk['doc_title']} | {chunk['doc_type']} | "
-            f"Chunk #{chunk['chunk_index']} | Score: {signals['composite']:.3f}]\n"
-            f"{chunk['content']}"
-        )
-
-    context = "\n\n---\n\n".join(context_parts)
-
-    if model is None:
-        # Fallback: structured template response without LLM
-        return _template_synthesis(question, ranked_results)
-
-    prompt = f"""You are NEXUS, an elite financial intelligence analyst. You have been provided with excerpts from financial documents retrieved by an agentic RAG pipeline. Analyze them thoroughly and answer the query.
-
-QUERY: {question}
-
-RETRIEVED DOCUMENT EXCERPTS:
-{context}
-
-Provide a comprehensive analysis with the following sections:
-
-**KEY FINDINGS**: Main insights with specific data points and [Source X] citations
-**EVIDENCE**: Supporting evidence with exact figures and percentages
-**RISK ASSESSMENT**: All risks identified, classified by severity (Critical/High/Medium/Low)
-**CROSS-REFERENCE**: Connections or contradictions across different document sources
-**LIMITATIONS**: What information is missing or uncertain
-
-Be precise with numbers, cite every claim, and flag any compliance concerns."""
-
-    try:
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"[LLM Error: {e}]\n\nFalling back to template synthesis...\n\n" + _template_synthesis(question, ranked_results)
-
-def _template_synthesis(question, ranked_results):
-    """Generate a structured response without LLM using template."""
-    lines = ["**KEY FINDINGS**", ""]
-    for i, r in enumerate(ranked_results[:4]):
-        chunk = r["chunk"]
-        lines.append(f"• From {chunk['ticker']} ({chunk['doc_type']}): "
-                     f"{chunk['content'][:200]}... [Source {i+1}]")
-    lines.extend(["", "**EVIDENCE**: See source excerpts above for specific data points.",
-                  "", "**RISK ASSESSMENT**: See compliance scan below for risk classification.",
-                  "", "**LIMITATIONS**: Template mode — LLM synthesis unavailable."])
-    return "\n".join(lines)
-
-status("Synthesis agent ready (Gemini 2.0 Flash)" if model else "Synthesis agent in template mode (no API key)")
-
-# ═══ CELL 8: Full Pipeline Execution ═════════════════════════════════════
+# ─── Full Pipeline ────────────────────────────────────────────
 
 banner("EXECUTING FULL 4-AGENT RAG PIPELINE", C.MAGENTA)
 
@@ -535,23 +376,30 @@ def run_pipeline(question):
     """Execute the complete 4-agent RAG pipeline with timing metrics."""
     pipeline_start = time.time()
 
-    # Agent 1: Ingestion — already done (chunks pre-built)
+    # Agent 1: Ingestion — pre-computed
     t0 = time.time()
     ingestion_ms = int((t0 - pipeline_start) * 1000)
 
-    # Agent 2: Retrieval
+    # Agent 2: Retrieval (TF-IDF + optional embedding)
     t1 = time.time()
-    raw_results = retrieve(question, top_k=8)
+    raw_results = retrieve_tfidf(question, all_chunks, idf_cache, top_k=8)
     retrieval_ms = int((time.time() - t1) * 1000)
 
-    # Agent 3: Reasoning
+    # Agent 3: Reasoning (5-signal scoring)
     t2 = time.time()
     ranked = reason_and_rank(question, raw_results)
     reasoning_ms = int((time.time() - t2) * 1000)
 
     # Agent 4: Synthesis
     t3 = time.time()
-    answer = synthesize(question, ranked)
+    # Build context chunks for the synthesizer
+    context_for_llm = []
+    for r in ranked[:6]:
+        chunk = dict(r["chunk"])
+        chunk["composite"] = r["composite"]
+        chunk["score"] = r["signals"]["tfidf"]
+        context_for_llm.append(chunk)
+    answer = generate_answer(question, context_for_llm)
     synthesis_ms = int((time.time() - t3) * 1000)
 
     total_ms = int((time.time() - pipeline_start) * 1000)
@@ -559,12 +407,10 @@ def run_pipeline(question):
     # Display results
     print(f"\n  {C.BOLD}{C.CYAN}Query:{C.RESET} {question}\n")
 
-    # Show retrieval results
     print(f"  {C.BOLD}Retrieved & Ranked Chunks:{C.RESET}\n")
     for i, r in enumerate(ranked[:5]):
         chunk = r["chunk"]
         sig = r["signals"]
-        # Color-code by score quality
         if sig["composite"] > 0.3:
             score_color = C.GREEN
         elif sig["composite"] > 0.15:
@@ -573,24 +419,22 @@ def run_pipeline(question):
             score_color = C.RED
 
         print(f"    {score_color}●{C.RESET} [{sig['composite']:.3f}] "
-              f"{C.GREEN}{chunk['ticker']:<5}{C.RESET} │ "
-              f"Chunk #{chunk['chunk_index']} │ "
+              f"{C.GREEN}{chunk.get('ticker', '???'):<5}{C.RESET} │ "
+              f"Chunk #{chunk.get('chunk_index', '?')} │ "
               f"TF-IDF: {sig['tfidf']:.3f} │ "
               f"Type: {sig['type_boost']:.2f} │ "
               f"Density: {sig['density']:.3f}")
         print(f"      {C.DIM}{chunk['content'][:120]}...{C.RESET}\n")
 
-    # Show LLM answer
     print(f"  {C.BOLD}{C.GREEN}═══ SYNTHESIZED ANALYSIS ═══{C.RESET}\n")
     print(textwrap.indent(answer, "    "))
     print()
 
-    # Show timing
     print(f"  {C.BOLD}Pipeline Metrics:{C.RESET}")
     print(f"    {C.CYAN}Ingestion:{C.RESET}   {ingestion_ms:>6}ms  (pre-computed)")
     print(f"    {C.BLUE}Retrieval:{C.RESET}    {retrieval_ms:>6}ms  (TF-IDF + IDF index)")
     print(f"    {C.YELLOW}Reasoning:{C.RESET}    {reasoning_ms:>6}ms  (5-signal scoring)")
-    print(f"    {C.GREEN}Synthesis:{C.RESET}    {synthesis_ms:>6}ms  (Gemini 2.0 Flash)")
+    print(f"    {C.GREEN}Synthesis:{C.RESET}    {synthesis_ms:>6}ms  ({'Gemini 2.0 Flash' if GEMINI_KEY else 'Template'})")
     print(f"    {C.BOLD}Total:{C.RESET}        {C.BOLD}{total_ms:>6}ms{C.RESET}")
 
     return {
@@ -604,7 +448,6 @@ def run_pipeline(question):
         "total_ms": total_ms,
     }
 
-# Execute demo queries
 queries = [
     "What are the key risk factors across all financial documents?",
     "What is Tesla's revenue growth and forward guidance for 2025?",
@@ -620,86 +463,27 @@ for i, q in enumerate(queries):
     pipeline_results.append(result)
     print(f"\n  {'─' * 60}")
 
-# ═══ CELL 9: Compliance Scanner ══════════════════════════════════════════
+# ═══ CELL 5: Compliance Scan ═════════════════════════════════════════════
 
 section("COMPLIANCE SCANNER — Regulatory Pattern Matching", C.RED)
 
-# Compliance patterns with severity classification
-COMPLIANCE_PATTERNS = [
-    # (Finding Name, Regex Pattern, Regulatory Reference, Severity, Description)
-    ("Material Weakness",        r"material weakness",                     "SOX §404",            "Critical",
-     "Deficiency in internal controls over financial reporting"),
-    ("Sanctions Violation",      r"(?:sanctions|ofac)\s*(?:violation)?",   "OFAC / BSA",          "Critical",
-     "Potential violation of sanctions or anti-money laundering laws"),
-    ("FCPA Violation",           r"(?:fcpa|anti-?corruption|bribery)",     "FCPA / UK Bribery Act","Critical",
-     "Foreign corrupt practices or bribery indicators"),
-    ("Data Breach",              r"data breach",                           "SEC Cyber Rules",     "High",
-     "Cybersecurity incident involving data compromise"),
-    ("Regulatory Investigation",  r"(?:regulatory|sec|cftc)\s+investigat", "SEC / CFTC",          "High",
-     "Active regulatory investigation or enforcement action"),
-    ("Interest Rate Risk",       r"interest rate risk",                    "FRB SR 11-7",         "High",
-     "Material interest rate risk exposure"),
-    ("Credit Exposure",          r"credit exposure",                       "Basel III",           "Medium",
-     "Significant credit risk concentration"),
-    ("CRE Delinquency",          r"(?:cre|commercial real estate)\s+delinq","Dodd-Frank §165",    "Medium",
-     "Rising commercial real estate delinquency rates"),
-    ("Liquidity Shortfall",      r"(?:lcr|liquidity coverage)\s+\d+",      "Basel III LCR",       "Medium",
-     "Liquidity coverage ratio below internal target"),
-    ("Operational Loss",         r"operational (?:risk )?loss",            "Basel II OpRisk",     "Medium",
-     "Material operational risk losses"),
-    ("Climate Risk",             r"climate risk",                          "TCFD / SEC Climate",  "Medium",
-     "Material climate-related financial risk"),
-    ("Cybersecurity Incident",   r"cybersecurity incident",                "SEC Cyber Rules",     "High",
-     "Significant cybersecurity threat or incident"),
-    ("Forward Guidance",         r"forward guidance|guidance:",            "Reg FD",              "Low",
-     "Forward-looking statements requiring safe harbor"),
-]
+findings = scan_compliance(all_chunks)
 
 severity_colors = {
-    "Critical": C.RED,
-    "High": C.YELLOW,
-    "Medium": C.CYAN,
-    "Low": C.GREEN,
+    "critical": C.RED,
+    "high": C.YELLOW,
+    "medium": C.CYAN,
+    "low": C.GREEN,
 }
 
-findings = []
-for chunk in all_chunks:
-    for name, pattern, ref, severity, description in COMPLIANCE_PATTERNS:
-        match = re.search(pattern, chunk["content"], re.IGNORECASE)
-        if match:
-            # Extract surrounding context
-            start = max(0, match.start() - 50)
-            end = min(len(chunk["content"]), match.end() + 80)
-            excerpt = chunk["content"][start:end].replace('\n', ' ')
-            if start > 0:
-                excerpt = "..." + excerpt
-            if end < len(chunk["content"]):
-                excerpt = excerpt + "..."
-
-            findings.append({
-                "finding": name,
-                "reference": ref,
-                "severity": severity,
-                "description": description,
-                "source_doc": chunk["doc_title"],
-                "ticker": chunk["ticker"],
-                "chunk_index": chunk["chunk_index"],
-                "excerpt": excerpt,
-            })
-
-# Sort by severity
-severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
-findings.sort(key=lambda f: (severity_order[f["severity"]], f["finding"]))
-
-# Display compliance scan results
 print(f"\n  {C.BOLD}Compliance Scan Results:{C.RESET}")
 print(f"  {C.BOLD}{len(findings)} findings across {len(documents)} documents{C.RESET}\n")
 
 # Summary by severity
 sev_counts = Counter(f["severity"] for f in findings)
-for sev in ["Critical", "High", "Medium", "Low"]:
+for sev in ["critical", "high", "medium", "low"]:
     count = sev_counts.get(sev, 0)
-    color = severity_colors[sev]
+    color = severity_colors.get(sev, C.WHITE)
     bar = "█" * count
     print(f"    {color}{sev:<10}{C.RESET} │ {color}{bar}{C.RESET} {count}")
 print()
@@ -707,9 +491,9 @@ print()
 # Detailed findings
 print(f"  {C.BOLD}Detailed Findings:{C.RESET}\n")
 for i, f in enumerate(findings):
-    color = severity_colors[f["severity"]]
-    print(f"    {color}● [{f['severity']}] {f['finding']}{C.RESET}")
-    print(f"      Regulation: {C.BOLD}{f['reference']}{C.RESET}  |  Source: {C.GREEN}{f['ticker']}{C.RESET} — {f['source_doc']}")
+    color = severity_colors.get(f["severity"], C.WHITE)
+    print(f"    {color}● [{f['severity'].upper()}] {f['category']}{C.RESET}")
+    print(f"      Regulation: {C.BOLD}{f['reference']}{C.RESET}  |  Chunk #{f['chunk_index']}")
     print(f"      Description: {f['description']}")
     print(f"      Excerpt: {C.DIM}\"{f['excerpt']}\"{C.RESET}")
     print()
@@ -717,20 +501,28 @@ for i, f in enumerate(findings):
 # Compliance DataFrame
 compliance_df = pd.DataFrame(findings)
 if not compliance_df.empty:
+    # Enrich with ticker info
+    for i, row in compliance_df.iterrows():
+        ci = row["chunk_index"]
+        matching = [c for c in all_chunks if c.get("chunk_index") == ci]
+        if matching:
+            compliance_df.at[i, "ticker"] = matching[0].get("ticker", "N/A")
+            compliance_df.at[i, "doc_title"] = matching[0].get("doc_title", "N/A")
+
     compliance_summary = compliance_df.groupby(["severity", "ticker"]).size().reset_index(name="count")
     compliance_pivot = compliance_summary.pivot_table(index="ticker", columns="severity",
                                                        values="count", fill_value=0)
-    for col in ["Critical", "High", "Medium", "Low"]:
+    for col in ["critical", "high", "medium", "low"]:
         if col not in compliance_pivot.columns:
             compliance_pivot[col] = 0
-    compliance_pivot = compliance_pivot[["Critical", "High", "Medium", "Low"]]
-    compliance_pivot["Total"] = compliance_pivot.sum(axis=1)
+    compliance_pivot = compliance_pivot[["critical", "high", "medium", "low"]]
+    compliance_pivot["total"] = compliance_pivot.sum(axis=1)
 
     print(f"  {C.BOLD}Compliance Summary by Entity:{C.RESET}\n")
     print(compliance_pivot.to_string())
     print()
 
-# ═══ CELL 10: Visualizations ═════════════════════════════════════════════
+# ═══ CELL 6: Visualizations ══════════════════════════════════════════════
 
 section("GENERATING VISUALIZATIONS", C.CYAN)
 
@@ -740,7 +532,7 @@ fig.suptitle("NEXUS — Agentic RAG Pipeline Analytics", fontsize=16, fontweight
 # Plot 1: Chunk Distribution by Document
 ax1 = axes[0, 0]
 tickers = [d["ticker"] for d in documents]
-chunk_counts = [len([c for c in all_chunks if c["ticker"] == t]) for t in tickers]
+chunk_counts = [len([c for c in all_chunks if c.get("ticker") == t]) for t in tickers]
 colors_bar = ['#0f9b8e', '#2196f3', '#ff6b35']
 bars = ax1.bar(tickers, chunk_counts, color=colors_bar, edgecolor='white', linewidth=1.5)
 ax1.set_title("Document Chunk Distribution", fontweight='bold', fontsize=12)
@@ -772,20 +564,19 @@ if pipeline_results:
 
 # Plot 3: Compliance Heatmap
 ax3 = axes[1, 0]
-if not compliance_df.empty:
-    heat_data = compliance_pivot[["Critical", "High", "Medium", "Low"]].values
+if not compliance_df.empty and 'compliance_pivot' in dir():
+    heat_data = compliance_pivot[["critical", "high", "medium", "low"]].values
     im = ax3.imshow(heat_data, cmap='YlOrRd', aspect='auto')
     ax3.set_xticks(range(4))
     ax3.set_xticklabels(["Critical", "High", "Medium", "Low"])
     ax3.set_yticks(range(len(compliance_pivot.index)))
     ax3.set_yticklabels(compliance_pivot.index)
     ax3.set_title("Compliance Findings Heatmap", fontweight='bold', fontsize=12)
-    # Add text annotations
-    for i in range(heat_data.shape[0]):
-        for j in range(heat_data.shape[1]):
-            val = int(heat_data[i, j])
+    for row_i in range(heat_data.shape[0]):
+        for col_j in range(heat_data.shape[1]):
+            val = int(heat_data[row_i, col_j])
             color = 'white' if val > 3 else 'black'
-            ax3.text(j, i, str(val), ha='center', va='center', fontweight='bold', color=color)
+            ax3.text(col_j, row_i, str(val), ha='center', va='center', fontweight='bold', color=color)
     plt.colorbar(im, ax=ax3, shrink=0.8)
 
 # Plot 4: Relevance Score Distribution
@@ -793,7 +584,7 @@ ax4 = axes[1, 1]
 all_scores = []
 for r in pipeline_results:
     query = r["query"]
-    raw = retrieve(query, top_k=8)
+    raw = retrieve_tfidf(query, all_chunks, idf_cache, top_k=8)
     ranked = reason_and_rank(query, raw)
     for item in ranked:
         all_scores.append(item["composite"])
@@ -812,11 +603,10 @@ plt.savefig("nexus_pipeline_analytics.png", dpi=150, bbox_inches='tight')
 plt.show()
 status("Visualization saved to nexus_pipeline_analytics.png")
 
-# ═══ CELL 11: Summary Dashboard ══════════════════════════════════════════
+# ═══ CELL 7: Summary Dashboard ═══════════════════════════════════════════
 
 banner("NEXUS — PIPELINE EXECUTION SUMMARY", C.GREEN)
 
-# Timing summary
 if pipeline_results:
     avg_total = np.mean([r["total_ms"] for r in pipeline_results])
     max_total = max(r["total_ms"] for r in pipeline_results)
@@ -828,7 +618,6 @@ if pipeline_results:
     print(f"    Min / Max latency:   {min_total}ms / {max_total}ms")
     print()
 
-    # Per-query summary table
     print(f"  {C.BOLD}Query Results Summary:{C.RESET}\n")
     summary_table = pd.DataFrame([{
         "Query": r["query"][:50] + "..." if len(r["query"]) > 50 else r["query"],
@@ -845,9 +634,9 @@ if pipeline_results:
 # Compliance summary
 print(f"  {C.BOLD}Compliance Summary:{C.RESET}")
 print(f"    Total findings:      {len(findings)}")
-for sev in ["Critical", "High", "Medium", "Low"]:
+for sev in ["critical", "high", "medium", "low"]:
     count = sev_counts.get(sev, 0)
-    color = severity_colors[sev]
+    color = severity_colors.get(sev, C.WHITE)
     print(f"    {color}{sev:<10}{C.RESET}          {count}")
 print()
 
@@ -858,12 +647,13 @@ print(f"    Total chunks:        {len(all_chunks)}")
 print(f"    Total characters:    {sum(len(c['content']) for c in all_chunks):,}")
 print(f"    Avg chunk size:      {np.mean([c['char_count'] for c in all_chunks]):.0f} chars")
 print(f"    IDF vocabulary:      {len(idf_cache):,} terms")
+print(f"    Vector store size:   {len(store)} entries")
 print()
 
 print(f"  {C.BOLD}{C.GREEN}✓ Pipeline execution complete.{C.RESET}")
 print(f"  {C.DIM}All agents ran successfully. Review findings above for insights.{C.RESET}")
 
-# ═══ CELL 12: Interactive Query Mode ═════════════════════════════════════
+# ═══ CELL 8: Interactive Query Mode ══════════════════════════════════════
 
 banner("NEXUS — Interactive Query Mode", C.CYAN)
 

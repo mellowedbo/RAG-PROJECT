@@ -65,4 +65,7 @@ download/
 # Mini services
 mini-services/
 # Caddy
-Caddyfile
+Caddyfile__pycache__/
+*.pyc
+nexus_core.egg-info/
+agent-ctx/

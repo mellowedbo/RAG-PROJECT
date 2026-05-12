@@ -3,17 +3,71 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { apiKey, systemPrompt, userPrompt } = body;
+    const { apiKey, systemPrompt, userPrompt, mode, texts } = body as {
+      apiKey?: string;
+      systemPrompt?: string;
+      userPrompt?: string;
+      mode?: 'generate' | 'embed';
+      texts?: string[];
+    };
 
+    // ─── Embedding mode ──────────────────────────────────
+    if (mode === 'embed') {
+      if (!apiKey || typeof apiKey !== 'string') {
+        return NextResponse.json({ error: 'Gemini API key is required for embeddings' }, { status: 400 });
+      }
+      if (!texts || !Array.isArray(texts) || texts.length === 0) {
+        return NextResponse.json({ error: 'texts array is required for embedding mode' }, { status: 400 });
+      }
+
+      // Cap batch size to 100 per request
+      const batch = texts.slice(0, 100);
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
+
+      // Gemini embedContent API accepts one text at a time, but we can use batchEmbedContents
+      const batchUrl = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${apiKey}`;
+
+      const requests = batch.map(text => ({
+        model: 'models/text-embedding-004',
+        content: { parts: [{ text }] },
+      }));
+
+      const embedRes = await fetch(batchUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requests }),
+      });
+
+      if (!embedRes.ok) {
+        const errData = await embedRes.json().catch(() => ({}));
+        const errMsg = (errData as Record<string, unknown>)?.error
+          ? ((errData as Record<string, unknown>).error as Record<string, unknown>)?.message || 'Embedding API error'
+          : `Embedding API returned ${embedRes.status}`;
+        return NextResponse.json(
+          { error: typeof errMsg === 'string' ? errMsg : 'Embedding API error' },
+          { status: embedRes.status }
+        );
+      }
+
+      const embedData = await embedRes.json();
+      const embeddings = (embedData?.embeddings as Array<{ values: number[] }>)?.map(
+        (e) => e.values
+      ) || [];
+
+      return NextResponse.json({ embeddings });
+    }
+
+    // ─── Generation mode (default) ───────────────────────
     if (!apiKey || typeof apiKey !== 'string') {
       return NextResponse.json({ error: 'Gemini API key is required' }, { status: 400 });
     }
-
     if (!userPrompt || typeof userPrompt !== 'string') {
       return NextResponse.json({ error: 'User prompt is required' }, { status: 400 });
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    const model = body.model || 'gemini-2.0-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
     const geminiBody: Record<string, unknown> = {
       contents: [
