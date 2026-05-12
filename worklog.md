@@ -1,33 +1,28 @@
 ---
 Task ID: 1
-Agent: Main Agent
-Task: Build NEXUS - Agentic RAG Intelligence Platform for Finance
+Agent: Main
+Task: Complete rebuild of NEXUS Finance RAG with Demo and Test modes
 
 Work Log:
-- Fixed hydration mismatch error (replaced Math.random() with deterministic particle positions)
-- Redesigned Prisma schema with Document, DocumentChunk, and AnalysisSession models
-- Built real document upload & semantic chunking pipeline (src/lib/rag/chunker.ts)
-- Built TF-IDF inspired chunk scoring engine for retrieval (src/lib/rag/compliance.ts)
-- Built regulatory compliance scanner with SEC, SOX, FCPA, GDPR patterns
-- Built Document Upload API (POST /api/documents/upload)
-- Built Document List API (GET /api/documents/list)
-- Built Document Delete API (DELETE /api/documents/delete)
-- Built RAG Query API (POST /api/finance-query) with real chunk retrieval + LLM synthesis + citations
-- Built Compliance Scan API (POST /api/compliance-scan)
-- Rebuilt entire frontend as a functional 5-tab application:
-  - Dashboard: stats, charts, pipeline status
-  - Documents: upload, chunk, manage, sample docs
-  - Query: real RAG queries with agent trace, metrics, cited sources
-  - Compliance: automated regulatory scanning
-  - Colab: downloadable notebook with full pipeline
-- All APIs tested end-to-end: upload → chunk → query → synthesis → citations ✓
-- Compliance scan tested: found 5 findings (2 critical, 3 high) from test data ✓
+- Analyzed existing project state (page.tsx ~1956 lines, API routes, Prisma schema, RAG utilities)
+- Created /api/gemini/route.ts - Gemini API proxy that accepts apiKey + prompts and calls Gemini 2.0 Flash
+- Completely rewrote page.tsx (~1920 lines) with two modes:
+  - Demo Mode: Pre-loaded 3 financial documents (Tesla 10-K, Goldman Sachs Q4, JP Morgan Risk) with 17 pre-chunked data points
+  - Test Mode: Users can paste/upload own documents stored in localStorage
+- Implemented full client-side RAG pipeline: chunking, TF-IDF retrieval, Gemini LLM synthesis
+- Added Gemini API key input in navigation bar (with show/hide toggle, saves to localStorage)
+- Without API key: retrieval-only mode showing chunk scores and previews
+- With API key: full LLM-powered analysis with cited sources
+- All 5 tabs functional: Dashboard, Documents, Query, Compliance, Colab
+- Fixed lint errors (setState in effect → lazy state initializers)
+- Verified Gemini API route works (returns proper errors for invalid keys)
+- Verified page renders correctly with all components
 
 Stage Summary:
-- Complete, functional RAG platform - not marketing fluff
-- Real document upload and chunking
-- Real TF-IDF retrieval with LLM synthesis
-- Real compliance scanning with regulatory pattern matching
-- Sample financial documents pre-loaded (Tesla 10-K, Goldman Sachs earnings)
-- Downloadable Colab notebook
-- Citation-grounded responses with source tracking
+- App now works entirely client-side with localStorage - no SQLite dependency for core features
+- Vercel-deployable (no database needed)
+- Demo mode has impressive pre-loaded data that works immediately
+- Test mode allows users to upload their own documents
+- Gemini API integration via server-side proxy for security
+- Compliance scanner runs client-side with pattern matching
+- Colab notebook is self-contained Python script using Gemini API
