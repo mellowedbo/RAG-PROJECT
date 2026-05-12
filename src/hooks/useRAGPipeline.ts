@@ -710,6 +710,7 @@ ${context}`;
     agentSteps,
     complianceFindings,
     isProcessing,
+    setIsProcessing,
     embeddingProgress,
     error,
 
