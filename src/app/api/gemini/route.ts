@@ -1,17 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '@/lib/rateLimit';
+
+/* ═══════════════════════════════════════════════════════════
+   NEXUS — Gemini API Proxy Route
+   Supports:
+   - Generation: Gemma 4 31B IT (gemma-4-31b-it)
+   - Embedding: Gemini Embedding 2 (gemini-embedding-2)
+     with task_type and output_dimensionality support
+   - Rate limiting: 10 req/day for demo key
+   ═══════════════════════════════════════════════════════════ */
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { apiKey, systemPrompt, userPrompt, mode, texts } = body as {
+    const {
+      apiKey,
+      systemPrompt,
+      userPrompt,
+      mode,
+      texts,
+      model,
+      outputDimensionality,
+      taskType,
+    } = body as {
       apiKey?: string;
       systemPrompt?: string;
       userPrompt?: string;
       mode?: 'generate' | 'embed';
       texts?: string[];
+      model?: string;
+      outputDimensionality?: number;
+      taskType?: string;
     };
 
-    // ─── Embedding mode ──────────────────────────────────
+    // Rate limiting for demo key usage
+    const sessionId = request.headers.get('x-session-id') || 'anonymous';
+    const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined;
+    const { allowed, remaining } = checkRateLimit(sessionId, ip);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Maximum 10 requests per day for demo usage.' },
+        { status: 429, headers: { 'X-RateLimit-Remaining': '0' } }
+      );
+    }
+
+    // ─── Embedding mode (Gemini Embedding 2) ──────────────────
     if (mode === 'embed') {
       if (!apiKey || typeof apiKey !== 'string') {
         return NextResponse.json({ error: 'Gemini API key is required for embeddings' }, { status: 400 });
@@ -22,16 +55,32 @@ export async function POST(request: NextRequest) {
 
       // Cap batch size to 100 per request
       const batch = texts.slice(0, 100);
+      const embeddingModel = model || 'gemini-embedding-2';
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${apiKey}`;
+      const batchUrl = `https://generativelanguage.googleapis.com/v1beta/models/${embeddingModel}:batchEmbedContents?key=${apiKey}`;
 
-      // Gemini embedContent API accepts one text at a time, but we can use batchEmbedContents
-      const batchUrl = `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${apiKey}`;
+      // Gemini Embedding 2 supports task_type and output_dimensionality
+      const requests = batch.map(text => {
+        const req: Record<string, unknown> = {
+          model: `models/${embeddingModel}`,
+          content: { parts: [{ text }] },
+        };
 
-      const requests = batch.map(text => ({
-        model: 'models/text-embedding-004',
-        content: { parts: [{ text }] },
-      }));
+        // Add task type for embedding optimization
+        // Options: RETRIEVAL_QUERY, RETRIEVAL_DOCUMENT, SEMANTIC_SIMILARITY,
+        //          CLASSIFICATION, CLUSTERING
+        if (taskType) {
+          req.taskType = taskType;
+        }
+
+        // Add output dimensionality (MRL support)
+        // Gemini Embedding 2: up to 3072 dims, adjustable via output_dimensionality
+        if (outputDimensionality && outputDimensionality >= 128 && outputDimensionality <= 3072) {
+          req.outputDimensionality = outputDimensionality;
+        }
+
+        return req;
+      });
 
       const embedRes = await fetch(batchUrl, {
         method: 'POST',
@@ -55,10 +104,13 @@ export async function POST(request: NextRequest) {
         (e) => e.values
       ) || [];
 
-      return NextResponse.json({ embeddings });
+      return NextResponse.json(
+        { embeddings },
+        { headers: { 'X-RateLimit-Remaining': String(remaining) } }
+      );
     }
 
-    // ─── Generation mode (default) ───────────────────────
+    // ─── Generation mode (Gemma 4 31B IT) ────────────────────
     if (!apiKey || typeof apiKey !== 'string') {
       return NextResponse.json({ error: 'Gemini API key is required' }, { status: 400 });
     }
@@ -66,8 +118,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User prompt is required' }, { status: 400 });
     }
 
-    const model = body.model || 'gemini-2.0-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const genModel = model || 'gemma-4-31b-it';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${genModel}:generateContent?key=${apiKey}`;
 
     const geminiBody: Record<string, unknown> = {
       contents: [
@@ -77,10 +129,10 @@ export async function POST(request: NextRequest) {
         },
       ],
       generationConfig: {
-        temperature: 0.7,
-        topP: 0.95,
-        topK: 40,
-        maxOutputTokens: 4096,
+        temperature: 1.0,    // Gemma 4 recommended
+        topP: 0.95,          // Gemma 4 recommended
+        topK: 64,            // Gemma 4 recommended
+        maxOutputTokens: 8192,
       },
     };
 
@@ -108,16 +160,40 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    // Gemma 4 with thinking mode may output thought channel
+    // Extract the final text response
+    const candidates = data?.candidates || [];
+    let text = '';
+
+    if (candidates.length > 0) {
+      const parts = candidates[0]?.content?.parts || [];
+      for (const part of parts) {
+        if (part.text && !part.thought) {
+          text += part.text;
+        }
+      }
+      // Fallback: if no non-thought text found, take any text
+      if (!text) {
+        for (const part of parts) {
+          if (part.text) {
+            text += part.text;
+          }
+        }
+      }
+    }
 
     if (!text) {
       return NextResponse.json(
-        { error: 'No response generated by Gemini' },
+        { error: 'No response generated by the model' },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ response: text });
+    return NextResponse.json(
+      { response: text },
+      { headers: { 'X-RateLimit-Remaining': String(remaining) } }
+    );
   } catch (error) {
     console.error('Gemini API error:', error);
     return NextResponse.json(

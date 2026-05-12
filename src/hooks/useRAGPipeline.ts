@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════════════
    NEXUS — RAG Pipeline Orchestration Hook
    Core state management + full chunk→embed→store→retrieve→generate pipeline
+   Powered by Gemini Embedding 2 + Gemma 4 31B IT
    ═══════════════════════════════════════════════════════════ */
 
 import { useState, useCallback, useRef } from 'react';
@@ -134,7 +135,6 @@ export function useRAGPipeline() {
       setModeState(newMode);
 
       if (newMode === 'demo') {
-        // Load pre-built demo data and pre-seed the vector DB
         setDocuments(DEMO_DOCUMENTS);
         setChunks(DEMO_CHUNKS);
         setError(null);
@@ -142,7 +142,8 @@ export function useRAGPipeline() {
 
         // Seed the vector DB with demo chunk embeddings
         const db = new MemoryVectorDB();
-        const mockEmbeddings = getMockEmbeddings(DEMO_CHUNKS.map((c) => c.content));
+        const dimensions = config.embeddingDimensions || 768;
+        const mockEmbeddings = getMockEmbeddings(DEMO_CHUNKS.map((c) => c.content), dimensions);
         const entries = DEMO_CHUNKS.map((chunk, i) => ({
           id: chunk.id,
           vector: mockEmbeddings[i],
@@ -175,7 +176,7 @@ export function useRAGPipeline() {
         vectorDBRef.current = db;
       }
     },
-    []
+    [config.embeddingDimensions]
   );
 
   /* ═══════════════════════════════════════════════════════════
@@ -235,6 +236,61 @@ export function useRAGPipeline() {
     vectorDBRef.current = db;
   }, []);
 
+  /** Common embedding logic for both upload and paste */
+  const embedAndStore = useCallback(
+    async (
+      docId: string,
+      docInfo: DocInfo,
+      newChunks: ChunkInfo[]
+    ): Promise<ChunkInfo[]> => {
+      // Embed chunks
+      docInfo.status = 'embedding';
+      setDocuments((prev) => [...prev, docInfo]);
+
+      const embeddingMap = await embedChunks(
+        newChunks.map((c) => ({ id: c.id, content: c.content })),
+        apiKey,
+        config.simulationMode || !apiKey,
+        (done, total) => setEmbeddingProgress({ done, total }),
+        config // Pass full config for embedding dimensions and task type
+      );
+
+      // Attach embeddings to chunks
+      const embeddedChunks: ChunkInfo[] = newChunks.map((chunk) => ({
+        ...chunk,
+        embedding: embeddingMap.get(chunk.id),
+      }));
+
+      // Update vector DB
+      const db = vectorDBRef.current;
+      const entries = embeddedChunks
+        .filter((c) => c.embedding && c.embedding.length > 0)
+        .map((chunk) => ({
+          id: chunk.id,
+          vector: chunk.embedding!,
+          metadata: chunk,
+        }));
+      db.addVectors(entries);
+
+      // Finalize state
+      docInfo.status = 'ready';
+      setChunks((prev) => [...prev, ...embeddedChunks]);
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === docId ? { ...d, status: 'ready' } : d))
+      );
+      setEmbeddingProgress(null);
+
+      // Persist in test mode
+      if (mode === 'test') {
+        saveDocsToHot([...documents, docInfo]);
+        saveChunksToHot([...chunks, ...embeddedChunks]);
+      }
+
+      return embeddedChunks;
+    },
+    [apiKey, config, mode, documents, chunks]
+  );
+
   /* ═══════════════════════════════════════════════════════════
      Document Upload (File)
      ═══════════════════════════════════════════════════════════ */
@@ -279,7 +335,7 @@ export function useRAGPipeline() {
           docType: detectDocType(filename),
           sector: detectSector(filename),
           wordCount: text.split(/\s+/).filter((w) => w.length > 0).length,
-          chunkCount: 0, // will update after chunking
+          chunkCount: 0,
           status: 'uploading',
           createdAt: new Date().toISOString(),
         };
@@ -303,47 +359,8 @@ export function useRAGPipeline() {
         docInfo.chunkCount = newChunks.length;
         docInfo.status = 'chunked';
 
-        // 4. Embed chunks
-        docInfo.status = 'embedding';
-        setDocuments((prev) => [...prev, docInfo]);
-
-        const embeddingMap = await embedChunks(
-          newChunks.map((c) => ({ id: c.id, content: c.content })),
-          apiKey,
-          config.simulationMode || !apiKey,
-          (done, total) => setEmbeddingProgress({ done, total })
-        );
-
-        // Attach embeddings to chunks
-        const embeddedChunks: ChunkInfo[] = newChunks.map((chunk) => ({
-          ...chunk,
-          embedding: embeddingMap.get(chunk.id),
-        }));
-
-        // 5. Update vector DB
-        const db = vectorDBRef.current;
-        const entries = embeddedChunks
-          .filter((c) => c.embedding && c.embedding.length > 0)
-          .map((chunk) => ({
-            id: chunk.id,
-            vector: chunk.embedding!,
-            metadata: chunk,
-          }));
-        db.addVectors(entries);
-
-        // 6. Finalize state
-        docInfo.status = 'ready';
-        setChunks((prev) => [...prev, ...embeddedChunks]);
-        setDocuments((prev) =>
-          prev.map((d) => (d.id === docId ? { ...d, status: 'ready' } : d))
-        );
-        setEmbeddingProgress(null);
-
-        // Persist in test mode
-        if (mode === 'test') {
-          saveDocsToHot([...documents, docInfo]);
-          saveChunksToHot([...chunks, ...embeddedChunks]);
-        }
+        // 4. Embed + Store
+        await embedAndStore(docId, docInfo, newChunks);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Document upload failed';
         setError(message);
@@ -352,7 +369,7 @@ export function useRAGPipeline() {
         setEmbeddingProgress(null);
       }
     },
-    [apiKey, config.chunkSize, config.chunkOverlap, config.simulationMode, mode, documents, chunks]
+    [config.chunkSize, config.chunkOverlap, embedAndStore]
   );
 
   /* ═══════════════════════════════════════════════════════════
@@ -403,45 +420,8 @@ export function useRAGPipeline() {
         docInfo.chunkCount = newChunks.length;
         docInfo.status = 'chunked';
 
-        // Embed
-        docInfo.status = 'embedding';
-        setDocuments((prev) => [...prev, docInfo]);
-
-        const embeddingMap = await embedChunks(
-          newChunks.map((c) => ({ id: c.id, content: c.content })),
-          apiKey,
-          config.simulationMode || !apiKey,
-          (done, total) => setEmbeddingProgress({ done, total })
-        );
-
-        const embeddedChunks: ChunkInfo[] = newChunks.map((chunk) => ({
-          ...chunk,
-          embedding: embeddingMap.get(chunk.id),
-        }));
-
-        // Update vector DB
-        const db = vectorDBRef.current;
-        const entries = embeddedChunks
-          .filter((c) => c.embedding && c.embedding.length > 0)
-          .map((chunk) => ({
-            id: chunk.id,
-            vector: chunk.embedding!,
-            metadata: chunk,
-          }));
-        db.addVectors(entries);
-
-        // Finalize
-        docInfo.status = 'ready';
-        setChunks((prev) => [...prev, ...embeddedChunks]);
-        setDocuments((prev) =>
-          prev.map((d) => (d.id === docId ? { ...d, status: 'ready' } : d))
-        );
-        setEmbeddingProgress(null);
-
-        if (mode === 'test') {
-          saveDocsToHot([...documents, docInfo]);
-          saveChunksToHot([...chunks, ...embeddedChunks]);
-        }
+        // Embed + Store
+        await embedAndStore(docId, docInfo, newChunks);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Document paste failed';
         setError(message);
@@ -450,7 +430,7 @@ export function useRAGPipeline() {
         setEmbeddingProgress(null);
       }
     },
-    [apiKey, config.chunkSize, config.chunkOverlap, config.simulationMode, mode, documents, chunks]
+    [config.chunkSize, config.chunkOverlap, embedAndStore]
   );
 
   /* ═══════════════════════════════════════════════════════════
@@ -518,10 +498,11 @@ export function useRAGPipeline() {
           let queryEmbedding: number[];
 
           if (config.simulationMode || !apiKey) {
-            const mockVecs = getMockEmbeddings([query]);
+            const dimensions = config.embeddingDimensions || 768;
+            const mockVecs = getMockEmbeddings([query], dimensions);
             queryEmbedding = mockVecs[0];
           } else {
-            queryEmbedding = await getQueryEmbedding(query, apiKey);
+            queryEmbedding = await getQueryEmbedding(query, apiKey, config);
           }
 
           // Try vector DB first, fall back to brute-force on chunks
@@ -603,8 +584,8 @@ export function useRAGPipeline() {
         let synthesisMs: number;
 
         if (apiKey && !config.simulationMode) {
-          // Call /api/gemini for LLM synthesis
-          const systemPrompt = `You are NEXUS, an expert financial document analysis AI. Answer the user's question based ONLY on the provided context. Cite sources using [Source N] notation. If the context doesn't contain enough information, say so clearly. Focus on accuracy and cite specific numbers, risk factors, and findings from the documents.
+          // Call /api/gemini for LLM synthesis using Gemma 4 31B IT
+          const systemPrompt = `You are NEXUS, an expert financial document analysis AI powered by Gemma 4 31B. Answer the user's question based ONLY on the provided context. Cite sources using [Source N] notation. If the context doesn't contain enough information, say so clearly. Focus on accuracy and cite specific numbers, risk factors, and findings from the documents.
 
 Context:
 ${context}`;
@@ -764,7 +745,7 @@ function buildRetrievalOnlyResponse(
     )
     .join('\n\n---\n\n');
 
-  return `## Retrieval Results for: "${query}"\n\n${sections}\n\n---\n*Add a Gemini API key to enable AI-powered synthesis with cross-referencing and analysis.*`;
+  return `## Retrieval Results for: "${query}"\n\n${sections}\n\n---\n*Add a Gemini API key to enable AI-powered synthesis with Gemma 4 31B for cross-referencing and analysis.*`;
 }
 
 /* ═══════════════════════════════════════════════════════════

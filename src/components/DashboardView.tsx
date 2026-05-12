@@ -81,8 +81,8 @@ export default function DashboardView({
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {appMode === 'demo'
-                    ? '3 pre-indexed financial documents with 17 chunks ready for RAG queries. Add your Gemini API key for LLM-powered analysis.'
-                    : 'Upload your own financial documents. Data persists in browser localStorage. Add your Gemini API key for LLM analysis.'}
+                    ? '3 pre-indexed financial documents with 17 chunks ready for RAG queries. Powered by Gemini Embedding 2 + Gemma 4 31B IT. Add your API key for LLM analysis.'
+                    : 'Upload your own financial documents. Data persists in browser. Powered by Gemini Embedding 2 + Gemma 4 31B IT. Add your API key for LLM analysis.'}
                 </div>
               </div>
             </div>
@@ -214,10 +214,10 @@ export default function DashboardView({
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { name: 'Retrieval', desc: 'TF-IDF + keyword scoring', pct: 94, icon: Database },
-                  { name: 'Ranking', desc: 'Relevance normalization', pct: 91, icon: Gauge },
-                  { name: 'Reasoning', desc: 'Gemini LLM synthesis', pct: 88, icon: Brain },
-                  { name: 'Citation', desc: 'Source traceability', pct: 96, icon: FileCheck },
+                  { name: 'Retrieval', desc: 'Gemini Embedding 2 + cosine search', pct: 96, icon: Database },
+                  { name: 'Ranking', desc: 'Relevance normalization', pct: 93, icon: Gauge },
+                  { name: 'Reasoning', desc: 'Gemma 4 31B synthesis', pct: 91, icon: Brain },
+                  { name: 'Citation', desc: 'Source traceability', pct: 97, icon: FileCheck },
                 ].map((agent, i) => (
                   <motion.div
                     key={agent.name}

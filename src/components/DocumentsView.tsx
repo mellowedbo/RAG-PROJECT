@@ -110,7 +110,7 @@ export default function DocumentsView({
               Upload Financial Document
             </CardTitle>
             <CardDescription>
-              Upload a file or paste financial document text. The system will automatically chunk and index it for RAG retrieval. Stored in your browser localStorage.
+              Upload a file or paste financial document text. The system will automatically chunk, embed with Gemini Embedding 2, and index it for semantic RAG retrieval. Stored in your browser.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

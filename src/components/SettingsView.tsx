@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { PipelineConfig } from '@/types';
+import { DEFAULT_CONFIG } from '@/types';
 
 /* ═══════════════════════ Settings View ═══════════════════════ */
 
@@ -63,15 +64,7 @@ export default function SettingsView({
   };
 
   const handleResetConfig = () => {
-    onConfigChange({
-      chunkSize: 800,
-      chunkOverlap: 120,
-      topK: 8,
-      useEmbeddings: true,
-      simulationMode: false,
-      embeddingModel: 'text-embedding-004',
-      generationModel: 'gemini-2.0-flash',
-    });
+    onConfigChange({ ...DEFAULT_CONFIG });
   };
 
   // Storage estimation
@@ -196,7 +189,7 @@ export default function SettingsView({
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Enable vector embeddings for semantic search (requires API key). Disabling falls back to TF-IDF keyword matching.
+                  Enable vector embeddings (Gemini Embedding 2) for semantic search. Disabling falls back to TF-IDF keyword matching.
                 </p>
                 {embeddingProgress !== null && useEmbeddings && (
                   <div className="mt-2">
@@ -286,11 +279,13 @@ export default function SettingsView({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="text-embedding-004">text-embedding-004 (Recommended)</SelectItem>
-                    <SelectItem value="embedding-001">embedding-001</SelectItem>
+                    <SelectItem value="gemini-embedding-2">Gemini Embedding 2 (Recommended — 3072-dim)</SelectItem>
+                    <SelectItem value="text-embedding-004">text-embedding-004 (Legacy — 768-dim)</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-[10px] text-muted-foreground mt-1 block">768-dim embeddings for semantic search</span>
+                <span className="text-[10px] text-muted-foreground mt-1 block">
+                  Multimodal embeddings with task-specific optimization
+                </span>
               </div>
               <div>
                 <label className="text-xs font-medium mb-1.5 block">Generation Model</label>
@@ -299,11 +294,62 @@ export default function SettingsView({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="gemma-4-31b-it">Gemma 4 31B IT (Recommended)</SelectItem>
                     <SelectItem value="gemini-2.0-flash">Gemini 2.0 Flash (Fast)</SelectItem>
-                    <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro (Accurate)</SelectItem>
+                    <SelectItem value="gemma-4-26b-a4b-it">Gemma 4 26B A4B IT (MoE — Fast)</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-[10px] text-muted-foreground mt-1 block">LLM model for synthesis and reasoning</span>
+                <span className="text-[10px] text-muted-foreground mt-1 block">
+                  LLM model for synthesis and reasoning
+                </span>
+              </div>
+            </div>
+
+            <Separator className="my-4" />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium mb-1.5 block">Embedding Dimensions</label>
+                <Select
+                  value={String(config.embeddingDimensions || 768)}
+                  onValueChange={(v) => updateConfig({ embeddingDimensions: parseInt(v) })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="256">256 (Fast — low storage)</SelectItem>
+                    <SelectItem value="512">512 (Balanced)</SelectItem>
+                    <SelectItem value="768">768 (Default — good quality)</SelectItem>
+                    <SelectItem value="1024">1024 (High quality)</SelectItem>
+                    <SelectItem value="1536">1536 (Very high quality)</SelectItem>
+                    <SelectItem value="3072">3072 (Maximum — Gemini Embedding 2 full)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-[10px] text-muted-foreground mt-1 block">
+                  Higher dimensions = better semantic understanding but more storage
+                </span>
+              </div>
+              <div>
+                <label className="text-xs font-medium mb-1.5 block">Embedding Task Type</label>
+                <Select
+                  value={config.embeddingTaskType || 'RETRIEVAL_DOCUMENT'}
+                  onValueChange={(v) => updateConfig({ embeddingTaskType: v as PipelineConfig['embeddingTaskType'] })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="RETRIEVAL_DOCUMENT">Retrieval Document (Best for indexing)</SelectItem>
+                    <SelectItem value="RETRIEVAL_QUERY">Retrieval Query (Best for queries)</SelectItem>
+                    <SelectItem value="SEMANTIC_SIMILARITY">Semantic Similarity</SelectItem>
+                    <SelectItem value="CLASSIFICATION">Classification</SelectItem>
+                    <SelectItem value="CLUSTERING">Clustering</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-[10px] text-muted-foreground mt-1 block">
+                  Optimizes embeddings for the intended use case
+                </span>
               </div>
             </div>
           </CardContent>
@@ -327,7 +373,7 @@ export default function SettingsView({
                   <span className="text-xs font-medium">localStorage Usage</span>
                 </div>
                 <div className="text-lg font-bold">{estimatedStorageMB} MB</div>
-                <div className="text-[10px] text-muted-foreground">of ~5 MB available</div>
+                <div className="text-[10px] text-muted-foreground">of ~5 MB available (IndexedDB for vectors)</div>
               </div>
               <div className="p-3 rounded-lg border border-border">
                 <div className="flex items-center gap-2 mb-1">
@@ -335,7 +381,9 @@ export default function SettingsView({
                   <span className="text-xs font-medium">Rate Limit Status</span>
                 </div>
                 <div className="text-lg font-bold text-emerald-600">OK</div>
-                <div className="text-[10px] text-muted-foreground">15 requests/min (Gemini free tier)</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Embedding: 100 RPM / Generation: 15 RPM
+                </div>
               </div>
               <div className="p-3 rounded-lg border border-border">
                 <div className="flex items-center gap-2 mb-1">
@@ -343,7 +391,9 @@ export default function SettingsView({
                   <span className="text-xs font-medium">Pipeline Mode</span>
                 </div>
                 <div className="text-lg font-bold capitalize">{simulationMode ? 'Simulation' : 'Live'}</div>
-                <div className="text-[10px] text-muted-foreground">{simulationMode ? 'Using simulated responses' : 'Making real API calls'}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {simulationMode ? 'Using simulated responses' : `Gemma 4 31B + Gemini Embedding 2 (${config.embeddingDimensions || 768}-dim)`}
+                </div>
               </div>
             </div>
           </CardContent>

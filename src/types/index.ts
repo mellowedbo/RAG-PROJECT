@@ -24,7 +24,7 @@ export interface ChunkInfo {
   section: string | null;
   wordCount: number;
   charCount: number;
-  /** Embedding vector (768-dim for text-embedding-004) */
+  /** Embedding vector (up to 3072-dim for Gemini Embedding 2) */
   embedding?: number[];
 }
 
@@ -71,6 +71,10 @@ export interface PipelineConfig {
   simulationMode: boolean;
   embeddingModel: string;
   generationModel: string;
+  /** Gemini Embedding 2 output dimensionality (128–3072) */
+  embeddingDimensions: number;
+  /** Task type for embedding optimization */
+  embeddingTaskType: 'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT' | 'SEMANTIC_SIMILARITY' | 'CLASSIFICATION' | 'CLUSTERING';
 }
 
 export const DEFAULT_CONFIG: PipelineConfig = {
@@ -79,8 +83,10 @@ export const DEFAULT_CONFIG: PipelineConfig = {
   topK: 8,
   useEmbeddings: true,
   simulationMode: false,
-  embeddingModel: 'text-embedding-004',
-  generationModel: 'gemini-2.0-flash',
+  embeddingModel: 'gemini-embedding-2',
+  generationModel: 'gemma-4-31b-it',
+  embeddingDimensions: 768,
+  embeddingTaskType: 'RETRIEVAL_DOCUMENT',
 };
 
 export interface VectorSearchResult {
