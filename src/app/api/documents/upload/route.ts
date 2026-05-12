@@ -55,16 +55,16 @@ export async function POST(request: NextRequest) {
           charCount: chunk.charCount,
         })),
       });
-
-      // Update document status
-      await db.document.update({
-        where: { id: document.id },
-        data: {
-          chunkCount: chunks.length,
-          status: 'chunked',
-        },
-      });
     }
+
+    // Update document status
+    await db.document.update({
+      where: { id: document.id },
+      data: {
+        chunkCount: chunks.length,
+        status: 'chunked',
+      },
+    });
 
     return NextResponse.json({
       success: true,
