@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Network, Search, FolderOpen, LayoutDashboard, Shield, Terminal,
-  Key, Eye, EyeOff, Zap, Check, Monitor, FlaskConical,
+  Network, Search, FolderOpen, LayoutDashboard, Terminal,
+  Key, Eye, EyeOff, Zap, Check, Monitor, FlaskConical, BookOpen,
+  IndianRupee, BarChart3, Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -100,8 +101,11 @@ export default function Navigation({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'documents', label: 'Documents', icon: FolderOpen },
     { id: 'query', label: 'Query', icon: Search },
-    { id: 'compliance', label: 'Compliance', icon: Shield },
+    { id: 'accounting', label: 'Accounting', icon: BookOpen },
+    { id: 'tax', label: 'Tax', icon: IndianRupee },
+    { id: 'analysis', label: 'Analysis', icon: BarChart3 },
     { id: 'colab', label: 'Colab', icon: Terminal },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (

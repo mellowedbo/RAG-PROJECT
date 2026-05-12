@@ -7,7 +7,9 @@ import Navigation from '@/components/Navigation';
 import DashboardView from '@/components/DashboardView';
 import DocumentsView from '@/components/DocumentsView';
 import QueryView from '@/components/QueryView';
-import ComplianceView from '@/components/ComplianceView';
+import AccountingView from '@/components/AccountingView';
+import TaxView from '@/components/TaxView';
+import AnalysisView from '@/components/AnalysisView';
 import ColabView from '@/components/ColabView';
 import SettingsView from '@/components/SettingsView';
 
@@ -23,7 +25,7 @@ const SAMPLE_QUERIES = [
   'Identify any material weaknesses in internal controls',
   'What is the credit risk and liquidity position at JP Morgan?',
   'Summarize operational risk events and their financial impact',
-  'What are the sanctions and anti-corruption investigation details?',
+  'Compare financial performance across the portfolio companies',
 ];
 
 /* ═══════════════════════ Colab Notebook Code ═══════════════════════ */
@@ -66,11 +68,9 @@ if not GEMINI_KEY:
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    # Gemma 4 31B IT for generation (reasoning + synthesis)
     gen_model = genai.GenerativeModel('gemma-4-31b-it')
-    # Gemini Embedding 2 for vector embeddings (3072-dim, adjustable)
     EMBEDDING_MODEL = 'gemini-embedding-2'
-    EMBEDDING_DIM = 768  # Adjust: 128, 256, 512, 768, 1024, 1536, 3072
+    EMBEDDING_DIM = 768
     print("✓ Gemini API configured")
     print(f"  Generation: Gemma 4 31B IT")
     print(f"  Embeddings: Gemini Embedding 2 ({EMBEDDING_DIM}-dim)")
@@ -111,7 +111,6 @@ including the FCPA. We experienced a data breach affecting 12,000 client account
 }
 
 def chunk_text(text, max_chunk=800, overlap=120, min_chunk=80):
-    """Recursive character text splitter with section awareness."""
     paragraphs = text.split("\\n\\n")
     chunks = []
     current = ""
@@ -128,7 +127,6 @@ def chunk_text(text, max_chunk=800, overlap=120, min_chunk=80):
         para = para.strip()
         if not para:
             continue
-
         sec_match = section_re.match(para)
         if sec_match:
             if len(current.strip()) >= min_chunk:
@@ -150,7 +148,6 @@ def chunk_text(text, max_chunk=800, overlap=120, min_chunk=80):
 
     return chunks
 
-# Build document store
 all_chunks = []
 for doc_name, doc_text in SAMPLE_DOCS.items():
     doc_chunks = chunk_text(doc_text)
@@ -159,19 +156,16 @@ for doc_name, doc_text in SAMPLE_DOCS.items():
     all_chunks.extend(doc_chunks)
 
 print(f"✓ Indexed {len(all_chunks)} chunks from {len(SAMPLE_DOCS)} documents")
-for c in all_chunks:
-    print(f"  [{c['document']}] {c['section'] or 'General'}: {c['word_count']} words")
 
 # ═══ CELL 4: Gemini Embedding 2 — Vector Index ═══════════════════════════
 
+import requests as requests_lib
+
 def get_embeddings(texts, task_type="RETRIEVAL_DOCUMENT"):
-    """Get embeddings using Gemini Embedding 2 with task-specific optimization."""
     if not GEMINI_KEY:
         return None
-
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:batchEmbedContents?key={GEMINI_KEY}"
-
-    requests = []
+    requests_list = []
     for text in texts:
         req = {
             "model": f"models/{EMBEDDING_MODEL}",
@@ -180,53 +174,41 @@ def get_embeddings(texts, task_type="RETRIEVAL_DOCUMENT"):
         }
         if EMBEDDING_DIM < 3072:
             req["outputDimensionality"] = EMBEDDING_DIM
-        requests.append(req)
-
-    response = requests_lib.post(url, json={"requests": requests})  # noqa
+        requests_list.append(req)
+    response = requests_lib.post(url, json={"requests": requests_list})
     data = response.json()
-
     if "embeddings" in data:
         return [e["values"] for e in data["embeddings"]]
     else:
         print(f"⚠ Embedding error: {data.get('error', {}).get('message', 'unknown')}")
         return None
 
-import requests as requests_lib
-
-# Embed all chunks
 print(f"\\nGenerating embeddings with Gemini Embedding 2 ({EMBEDDING_DIM}-dim)...")
 chunk_texts = [c["content"] for c in all_chunks]
 embeddings = get_embeddings(chunk_texts, "RETRIEVAL_DOCUMENT")
 
 if embeddings:
-    # Store embeddings with chunks
     for i, emb in enumerate(embeddings):
         all_chunks[i]["embedding"] = np.array(emb)
     print(f"✓ Embedded {len(embeddings)} chunks ({EMBEDDING_DIM} dimensions each)")
-    print(f"  Task type: RETRIEVAL_DOCUMENT (optimized for document indexing)")
 else:
     print("⚠ Using TF-IDF fallback (no embeddings)")
 
 # ═══ CELL 5: Retrieval — Cosine Similarity + TF-IDF Hybrid ═════════════
 
 def cosine_sim(a, b):
-    """Compute cosine similarity between two vectors."""
     dot = np.dot(a, b)
     norm = np.linalg.norm(a) * np.linalg.norm(b)
     return dot / norm if norm > 0 else 0
 
 def retrieve(query, top_k=5):
-    """Retrieve relevant chunks using embeddings (primary) or TF-IDF (fallback)."""
     if embeddings and GEMINI_KEY:
-        # Get query embedding with RETRIEVAL_QUERY task type
         query_embs = get_embeddings([query], "RETRIEVAL_QUERY")
         if query_embs:
             query_vec = np.array(query_embs[0])
             scores = [(cosine_sim(query_vec, c["embedding"]), c) for c in all_chunks]
             scores.sort(key=lambda x: x[0], reverse=True)
             return [(s, c) for s, c in scores[:top_k]]
-
-    # TF-IDF fallback
     from sklearn.feature_extraction.text import TfidfVectorizer
     corpus = [c["content"] for c in all_chunks] + [query]
     vectorizer = TfidfVectorizer(stop_words="english", max_features=5000)
@@ -240,30 +222,22 @@ def retrieve(query, top_k=5):
 # ═══ CELL 6: RAG Query Pipeline ══════════════════════════════════════════
 
 def rag_query(query, top_k=5):
-    """Full RAG pipeline: Retrieve → Rank → Reason → Synthesize."""
     print(f"\\n{'='*60}")
     print(f"QUERY: {query}")
     print(f"{'='*60}")
-
-    # Step 1: Retrieval
     t0 = time.time()
     results = retrieve(query, top_k)
     retrieval_ms = (time.time() - t0) * 1000
     print(f"\\n[Retrieval Agent] Found {len(results)} chunks in {retrieval_ms:.0f}ms")
-
-    # Step 2: Build context
     context = "\\n\\n---\\n\\n".join([
         f"[Source {i+1} | {c['document']} | {c['section'] or 'General'} | Score: {s:.3f}]\\n{c['content']}"
         for i, (s, c) in enumerate(results)
     ])
-
     if not gen_model:
         print("\\n⚠ No API key — retrieval-only mode")
         for i, (s, c) in enumerate(results):
             print(f"\\nSource {i+1} (score: {s:.3f}): {c['content'][:200]}...")
         return None
-
-    # Step 3: LLM Synthesis with Gemma 4 31B IT
     t1 = time.time()
     prompt = f"""You are NEXUS, a financial intelligence analyst powered by Gemma 4 31B.
 Analyze the following financial document excerpts and answer the query.
@@ -280,26 +254,19 @@ DOCUMENT EXCERPTS:
 {context}
 
 Provide a thorough, citation-grounded analysis."""
-
     response = gen_model.generate_content(
         prompt,
         generation_config=genai.types.GenerationConfig(
-            temperature=1.0,
-            top_p=0.95,
-            top_k=64,
-            max_output_tokens=4096,
+            temperature=1.0, top_p=0.95, top_k=64, max_output_tokens=4096,
         )
     )
     synthesis_ms = (time.time() - t1) * 1000
-
-    # Step 4: Output
     total_ms = (time.time() - t0) * 1000
     print(f"[Reasoning Agent] Gemma 4 31B synthesis in {synthesis_ms:.0f}ms")
     print(f"[Synthesis Agent] Total pipeline: {total_ms:.0f}ms")
     print(f"\\n{'='*60}")
     print(response.text)
     print(f"{'='*60}")
-
     return response.text
 
 # ═══ CELL 7: Run Sample Queries ══════════════════════════════════════════
@@ -334,7 +301,6 @@ while True:
 export default function NexusPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Use the RAG pipeline hook for all state management
   const pipeline = useRAGPipeline();
   const {
     mode: appMode,
@@ -346,8 +312,8 @@ export default function NexusPage() {
     citedChunks,
     metrics,
     agentSteps,
-    complianceFindings,
     isProcessing,
+    setIsProcessing,
     embeddingProgress,
     error,
     setMode: handleModeChange,
@@ -357,48 +323,17 @@ export default function NexusPage() {
     pasteDocument,
     deleteDocument,
     runQuery,
-    runComplianceScan,
   } = pipeline;
 
-  // Additional local state for UI
   const [queryCount, setQueryCount] = useState(0);
-  const [complianceStats, setComplianceStats] = useState<{
-    totalFindings: number; critical: number; high: number; medium: number; low: number;
-  } | null>(null);
-  const [complianceSummary, setComplianceSummary] = useState<string | null>(null);
-  const [complianceCategories, setComplianceCategories] = useState<string[]>([]);
-  const [filterSeverity, setFilterSeverity] = useState('all');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
-  // Handle query with counter
   const handleRunQuery = async (query: string) => {
     await runQuery(query);
     setQueryCount(c => c + 1);
   };
 
-  // Handle compliance scan with stats
-  const handleRunComplianceScan = () => {
-    runComplianceScan();
-    // Compute stats from findings after scan
-    setTimeout(() => {
-      const results = complianceFindings;
-      if (results.length > 0) {
-        const stats = {
-          totalFindings: results.length,
-          critical: results.filter(f => f.severity === 'critical').length,
-          high: results.filter(f => f.severity === 'high').length,
-          medium: results.filter(f => f.severity === 'medium').length,
-          low: results.filter(f => f.severity === 'low').length,
-        };
-        const cats = [...new Set(results.map(f => f.category))];
-        setComplianceStats(stats);
-        setComplianceCategories(cats);
-      }
-    }, 100);
-  };
-
-  // Handle document paste with success/error feedback
   const handleUploadText = async (title: string, content: string, docType: string, sector: string) => {
     setUploadError(null);
     setUploadSuccess(false);
@@ -411,7 +346,6 @@ export default function NexusPage() {
     }
   };
 
-  // Handle file upload with success/error feedback
   const handleUploadFile = async (file: File) => {
     setUploadError(null);
     setUploadSuccess(false);
@@ -424,12 +358,10 @@ export default function NexusPage() {
     }
   };
 
-  // Handle document deletion
   const handleDeleteDocument = (id: string) => {
     deleteDocument(id);
   };
 
-  // Refresh handler
   const handleRefresh = () => {
     handleModeChange(appMode);
   };
@@ -437,54 +369,89 @@ export default function NexusPage() {
   /* ═══════════════════════ Tab Content ═══════════════════════ */
 
   const tabContent: Record<string, React.ReactNode> = {
-    dashboard: <DashboardView documents={documents} chunks={chunks} queryCount={queryCount} appMode={appMode} />,
-    documents: <DocumentsView
-      documents={documents}
-      chunks={chunks}
-      appMode={appMode}
-      onUploadFile={handleUploadFile}
-      onUploadText={handleUploadText}
-      onDelete={handleDeleteDocument}
-      onRefresh={handleRefresh}
-      isUploading={isProcessing}
-      uploadError={uploadError || error}
-      uploadSuccess={uploadSuccess}
-    />,
-    query: <QueryView
-      chunks={chunks}
-      apiKey={apiKey}
-      isAnalyzing={isProcessing}
-      agentSteps={agentSteps}
-      result={queryResult || null}
-      metrics={metrics}
-      citedChunks={citedChunks}
-      error={error}
-      onRunQuery={handleRunQuery}
-      sampleQueries={SAMPLE_QUERIES}
-    />,
-    compliance: <ComplianceView
-      chunks={chunks}
-      findings={complianceFindings}
-      isScanning={isProcessing && complianceFindings.length === 0}
-      stats={complianceStats}
-      summary={complianceSummary}
-      categories={complianceCategories}
-      filterSeverity={filterSeverity}
-      setFilterSeverity={setFilterSeverity}
-      onRunScan={handleRunComplianceScan}
-    />,
+    dashboard: (
+      <DashboardView
+        documents={documents}
+        chunks={chunks}
+        queryCount={queryCount}
+        appMode={appMode}
+        config={config}
+        apiKey={apiKey}
+        onTabChange={setActiveTab}
+      />
+    ),
+    documents: (
+      <DocumentsView
+        documents={documents}
+        chunks={chunks}
+        appMode={appMode}
+        onUploadFile={handleUploadFile}
+        onUploadText={handleUploadText}
+        onDelete={handleDeleteDocument}
+        onRefresh={handleRefresh}
+        isUploading={isProcessing}
+        uploadError={uploadError || error}
+        uploadSuccess={uploadSuccess}
+      />
+    ),
+    query: (
+      <QueryView
+        chunks={chunks}
+        apiKey={apiKey}
+        isAnalyzing={isProcessing}
+        agentSteps={agentSteps}
+        result={queryResult || null}
+        metrics={metrics}
+        citedChunks={citedChunks}
+        error={error}
+        onRunQuery={handleRunQuery}
+        sampleQueries={SAMPLE_QUERIES}
+      />
+    ),
+    accounting: (
+      <AccountingView
+        apiKey={apiKey}
+        generationModel={config.generationModel}
+        simulationMode={config.simulationMode}
+        isProcessing={isProcessing}
+        setIsProcessing={setIsProcessing}
+      />
+    ),
+    tax: (
+      <TaxView
+        apiKey={apiKey}
+        generationModel={config.generationModel}
+        simulationMode={config.simulationMode}
+        chunks={chunks}
+        isProcessing={isProcessing}
+        setIsProcessing={setIsProcessing}
+      />
+    ),
+    analysis: (
+      <AnalysisView
+        apiKey={apiKey}
+        generationModel={config.generationModel}
+        simulationMode={config.simulationMode}
+        chunks={chunks}
+        documents={documents}
+        isProcessing={isProcessing}
+        setIsProcessing={setIsProcessing}
+      />
+    ),
     colab: <ColabView colabCode={COLAB_CODE} />,
-    settings: <SettingsView
-      apiKey={apiKey}
-      setApiKey={setApiKey}
-      simulationMode={config.simulationMode}
-      setSimulationMode={(v) => setConfig({ simulationMode: v })}
-      useEmbeddings={config.useEmbeddings}
-      setUseEmbeddings={(v) => setConfig({ useEmbeddings: v })}
-      config={config}
-      onConfigChange={setConfig}
-      embeddingProgress={embeddingProgress ? (embeddingProgress.done / embeddingProgress.total) * 100 : null}
-    />,
+    settings: (
+      <SettingsView
+        apiKey={apiKey}
+        setApiKey={setApiKey}
+        simulationMode={config.simulationMode}
+        setSimulationMode={(v) => setConfig({ simulationMode: v })}
+        useEmbeddings={config.useEmbeddings}
+        setUseEmbeddings={(v) => setConfig({ useEmbeddings: v })}
+        config={config}
+        onConfigChange={setConfig}
+        embeddingProgress={embeddingProgress ? (embeddingProgress.done / embeddingProgress.total) * 100 : null}
+      />
+    ),
   };
 
   /* ═══════════════════════ Render ═══════════════════════ */
@@ -513,12 +480,12 @@ export default function NexusPage() {
       <footer className="mt-auto border-t border-border bg-muted/30 py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-semibold">NEXUS RAG</span>
+            <span className="font-semibold">NEXUS</span>
             <span>•</span>
-            <span>Gemma 4 31B IT + Gemini Embedding 2</span>
+            <span>Financial Intelligence Platform</span>
           </div>
           <div className="text-xs text-muted-foreground">
-            {config.simulationMode ? 'Simulation Mode' : 'Live Mode'} • {config.embeddingDimensions || 768}-dim vectors
+            {config.simulationMode ? 'Simulation Mode' : 'Live Mode'} • {config.embeddingModel} ({config.embeddingDimensions || 768}-dim) • {config.generationModel}
           </div>
         </div>
       </footer>

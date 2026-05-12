@@ -1,8 +1,11 @@
 /* ═══════════════════════════════════════════════════════════
    NEXUS — Shared Type Definitions
+   Financial Intelligence RAG Platform
    ═══════════════════════════════════════════════════════════ */
 
 export type AppMode = 'demo' | 'test';
+
+/* ─── Document & Chunk Types ──────────────────────────────── */
 
 export interface DocInfo {
   id: string;
@@ -28,6 +31,8 @@ export interface ChunkInfo {
   embedding?: number[];
 }
 
+/* ─── RAG Pipeline Types ─────────────────────────────────── */
+
 export interface AgentStep {
   agent: string;
   status: 'pending' | 'running' | 'completed' | 'failed';
@@ -45,15 +50,6 @@ export interface CitedChunk {
   preview: string;
 }
 
-export interface ComplianceFinding {
-  category: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  description: string;
-  reference: string;
-  chunkIndex: number;
-  excerpt: string;
-}
-
 export interface QueryMetrics {
   chunksSearched: number;
   chunksRetrieved: number;
@@ -62,6 +58,95 @@ export interface QueryMetrics {
   totalLatencyMs: number;
   confidenceScore: number;
 }
+
+/* ─── Model Catalog ──────────────────────────────────────── */
+
+export interface ModelOption {
+  id: string;
+  name: string;
+  description: string;
+  provider: string;
+  category: 'embedding' | 'generation';
+  maxTokens?: number;
+  dimensions?: number;
+  isMultimodal?: boolean;
+  isRecommended?: boolean;
+}
+
+export const EMBEDDING_MODELS: ModelOption[] = [
+  {
+    id: 'gemini-embedding-2',
+    name: 'Gemini Embedding 2',
+    description: 'Latest multimodal embeddings — 3072-dim, adjustable, task instructions, PDF/image/audio support',
+    provider: 'Google',
+    category: 'embedding',
+    maxTokens: 8192,
+    dimensions: 3072,
+    isMultimodal: true,
+    isRecommended: true,
+  },
+  {
+    id: 'text-embedding-004',
+    name: 'text-embedding-004',
+    description: 'Legacy text embeddings — 768-dim, text only, stable and fast',
+    provider: 'Google',
+    category: 'embedding',
+    maxTokens: 2048,
+    dimensions: 768,
+    isMultimodal: false,
+  },
+];
+
+export const GENERATION_MODELS: ModelOption[] = [
+  {
+    id: 'gemma-4-31b-it',
+    name: 'Gemma 4 31B IT',
+    description: 'Dense 30.7B params, 256K context, thinking mode, function calling — best reasoning',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isRecommended: true,
+  },
+  {
+    id: 'gemma-4-26b-a4b-it',
+    name: 'Gemma 4 26B A4B IT',
+    description: 'MoE architecture, 26B total / 4B active — fast and efficient, good for simpler tasks',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+  },
+  {
+    id: 'gemini-2.5-flash-preview-05-20',
+    name: 'Gemini 2.5 Flash',
+    description: 'Latest Gemini with thinking mode — fast, strong reasoning, built-in tools',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 65536,
+    isMultimodal: true,
+  },
+  {
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    description: 'Fast and versatile — good balance of speed and quality',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+  },
+  {
+    id: 'gemini-2.0-flash-lite',
+    name: 'Gemini 2.0 Flash Lite',
+    description: 'Lightweight and fastest — cost-effective for simple queries',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+  },
+];
+
+export const ALL_MODELS = [...EMBEDDING_MODELS, ...GENERATION_MODELS];
+
+/* ─── Pipeline Config ────────────────────────────────────── */
 
 export interface PipelineConfig {
   chunkSize: number;
@@ -93,4 +178,137 @@ export interface VectorSearchResult {
   id: string;
   score: number;
   metadata: ChunkInfo;
+}
+
+/* ─── Accounting Types ───────────────────────────────────── */
+
+export interface JournalEntry {
+  id: string;
+  date: string;
+  description: string;
+  debitAccount: string;
+  creditAccount: string;
+  amount: number;
+  narration?: string;
+  isVerified: boolean;
+  issues?: string[];
+}
+
+export interface AccountEntry {
+  accountName: string;
+  accountType: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense';
+  normalBalance: 'debit' | 'credit';
+  balance: number;
+}
+
+export interface TrialBalanceEntry {
+  accountName: string;
+  debit: number;
+  credit: number;
+}
+
+export interface AccountingIssue {
+  id: string;
+  severity: 'critical' | 'warning' | 'info';
+  category: string;
+  description: string;
+  suggestion: string;
+  relatedEntries: string[];
+}
+
+/* ─── Tax Types ──────────────────────────────────────────── */
+
+export type TaxRegime = 'old' | 'new';
+
+export interface IncomeTaxInput {
+  annualIncome: number;
+  regime: TaxRegime;
+  age: number;
+  deductions80C: number;
+  deductions80D: number;
+  hraExemption: number;
+  otherDeductions: number;
+}
+
+export interface TaxSlab {
+  range: string;
+  rate: number;
+  taxableFrom: number;
+  taxableTo: number;
+}
+
+export interface IncomeTaxResult {
+  regime: TaxRegime;
+  grossIncome: number;
+  totalDeductions: number;
+  taxableIncome: number;
+  taxAmount: number;
+  cess: number;
+  totalTax: number;
+  effectiveRate: number;
+  slabs: TaxSlab[];
+  comparison?: {
+    oldRegimeTax: number;
+    newRegimeTax: number;
+    savings: number;
+    betterRegime: TaxRegime;
+  };
+}
+
+export interface GSTInput {
+  amount: number;
+  gstRate: number;
+  gstType: 'cgst_sgst' | 'igst';
+  isInclusive: boolean;
+}
+
+export interface GSTResult {
+  baseAmount: number;
+  gstAmount: number;
+  totalAmount: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  rate: number;
+}
+
+/* ─── Financial Analysis Types ───────────────────────────── */
+
+export interface FinancialRatio {
+  name: string;
+  formula: string;
+  value: number;
+  unit: 'ratio' | 'percent' | 'currency';
+  category: 'liquidity' | 'profitability' | 'leverage' | 'efficiency' | 'market';
+  interpretation: string;
+  isHealthy: boolean;
+}
+
+export interface FinancialStatement {
+  id: string;
+  companyName: string;
+  period: string;
+  type: 'balance_sheet' | 'income_statement' | 'cash_flow';
+  data: Record<string, number>;
+}
+
+export interface AnalysisResult {
+  ratios: FinancialRatio[];
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+}
+
+/* ─── Pipeline Stats ─────────────────────────────────────── */
+
+export interface PipelineStats {
+  totalQueries: number;
+  avgRetrievalMs: number;
+  avgSynthesisMs: number;
+  avgConfidence: number;
+  documentsProcessed: number;
+  chunksIndexed: number;
+  embeddingsGenerated: number;
+  modelsUsed: Record<string, number>;
 }
