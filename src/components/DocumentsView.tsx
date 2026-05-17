@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import type { DocInfo, ChunkInfo, AppMode } from '@/types';
 
-/* ═══════════════════════ Documents View ═══════════════════════ */
+// Documents View
 
 interface DocumentsViewProps {
   documents: DocInfo[];
@@ -103,7 +103,7 @@ export default function DocumentsView({
     <div className="space-y-6">
       {/* Upload form - only in test mode */}
       {appMode === 'test' && (
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <Upload className="w-4 h-4 text-emerald-600" />
@@ -180,7 +180,7 @@ export default function DocumentsView({
             {uploadMethod === 'file' && (
               <div>
                 <label className="text-xs font-medium mb-1.5 block">Upload File</label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-emerald-500/30 transition-colors">
+                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-emerald-500/30 transition-colors overflow-hidden">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -293,7 +293,7 @@ export default function DocumentsView({
               </p>
             </div>
           ) : (
-            <ScrollArea className="max-h-[400px]">
+            <ScrollArea className="max-h-[50vh]">
               <div className="space-y-2 pr-2">
                 {documents.map((doc, i) => (
                   <motion.div

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-/* ═══════════════════════ Colab View ═══════════════════════ */
+// Colab View
 
 interface ColabViewProps {
   colabCode: string;
@@ -54,7 +54,7 @@ export default function ColabView({
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <CardTitle className="text-base flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-600" />Python Notebook — NEXUS RAG</CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">Self-contained Colab notebook. Uses Gemma 4 31B IT + Gemini Embedding 2. No server needed.</p>
+              <p className="text-xs text-muted-foreground mt-1">Self-contained Colab notebook. Uses Gemini 2.0 Flash + Gemini Embedding 2. No server needed.</p>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
@@ -73,7 +73,7 @@ export default function ColabView({
         {[
           { title: 'Chunking Engine', desc: 'Recursive splitting with section awareness', icon: Layers },
           { title: 'Gemini Embedding 2', desc: '3072-dim vectors with task optimization', icon: Database },
-          { title: 'Gemma 4 31B IT', desc: 'Advanced reasoning and financial analysis', icon: Brain },
+          { title: 'Gemini 2.0 Flash', desc: 'Advanced reasoning and financial analysis', icon: Brain },
         ].map((item) => (
           <Card key={item.title}>
             <CardContent className="p-4">

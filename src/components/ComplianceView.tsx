@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import type { ChunkInfo, ComplianceFinding } from '@/types';
 
-/* ═══════════════════════ Constants ═══════════════════════ */
+// Constants
 
 const SEVERITY_CONFIG: Record<string, { color: string; text: string; border: string; bg: string; label: string }> = {
   critical: { color: 'bg-red-500', text: 'text-red-600', border: 'border-red-500/30', bg: 'bg-red-500/5', label: 'CRITICAL' },
@@ -24,7 +24,7 @@ const SEVERITY_CONFIG: Record<string, { color: string; text: string; border: str
   low: { color: 'bg-blue-500', text: 'text-blue-600', border: 'border-blue-500/30', bg: 'bg-blue-500/5', label: 'LOW' },
 };
 
-/* ═══════════════════════ Compliance View ═══════════════════════ */
+// Compliance View
 
 interface ComplianceStats {
   totalFindings: number;

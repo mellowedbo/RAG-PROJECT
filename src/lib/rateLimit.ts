@@ -1,8 +1,8 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Rate Limiting (Demo Key Protection)
-   Cookie-based session tracking + per-IP limiting
-   For Vercel serverless: uses in-memory Map (resets on cold start)
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Rate Limiting (Demo Key Protection)
+ * Cookie-based session tracking + per-IP limiting
+ * Note: In-memory Map resets on serverless cold start
+ */
 
 interface RateLimitEntry {
   count: number;

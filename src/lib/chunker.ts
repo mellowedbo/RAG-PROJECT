@@ -1,7 +1,7 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Chunking Engine
-   Recursive character splitting with section-heading awareness
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Chunking Engine
+ * Recursive character splitting with section-heading awareness
+ */
 
 export interface ChunkOutput {
   content: string;

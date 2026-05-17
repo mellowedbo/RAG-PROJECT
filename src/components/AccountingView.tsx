@@ -33,9 +33,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import type { JournalEntry, AccountingIssue, TrialBalanceEntry } from '@/types';
 
-/* ═══════════════════════════════════════════════════════════
-   Constants — Account Catalog (Indian Accounting Context)
-   ═══════════════════════════════════════════════════════════ */
+// Constants — Account Catalog (Indian Accounting Context)
 
 interface AccountInfo {
   name: string;
@@ -105,9 +103,7 @@ const NL_SAMPLE_PROMPTS = [
 
 const STORAGE_KEY = 'nexus-journal-entries';
 
-/* ═══════════════════════════════════════════════════════════
-   Helpers
-   ═══════════════════════════════════════════════════════════ */
+// Helpers
 
 function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -141,9 +137,7 @@ function saveEntries(entries: JournalEntry[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Accounting Logic
-   ═══════════════════════════════════════════════════════════ */
+// Accounting Logic
 
 function computeTrialBalance(entries: JournalEntry[]): TrialBalanceEntry[] {
   const balances = new Map<string, { debit: number; credit: number }>();
@@ -313,9 +307,7 @@ function scanForIssues(entries: JournalEntry[]): AccountingIssue[] {
   return issues;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Component Props
-   ═══════════════════════════════════════════════════════════ */
+// Component Props
 
 interface AccountingViewProps {
   apiKey: string;
@@ -323,11 +315,10 @@ interface AccountingViewProps {
   simulationMode: boolean;
   isProcessing: boolean;
   setIsProcessing: (v: boolean) => void;
+  chunks: { id: string; documentId: string; content: string; chunkIndex: number; section: string | null; wordCount: number; charCount: number; embedding?: number[] }[];
 }
 
-/* ═══════════════════════════════════════════════════════════
-   AccountingView Component
-   ═══════════════════════════════════════════════════════════ */
+// AccountingView Component
 
 export default function AccountingView({
   apiKey,
@@ -335,9 +326,10 @@ export default function AccountingView({
   simulationMode,
   isProcessing,
   setIsProcessing,
+  chunks,
 }: AccountingViewProps) {
 
-  /* ─── State ─────────────────────────────────────────────── */
+  // State
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   const [issues, setIssues] = useState<AccountingIssue[]>([]);
   const [trialBalance, setTrialBalance] = useState<TrialBalanceEntry[]>([]);
@@ -363,13 +355,18 @@ export default function AccountingView({
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  /* ─── Load from localStorage on mount ───────────────────── */
+  // RAG document analysis
+  const [ragChunks, setRagChunks] = useState<{ content: string; section: string | null; documentTitle: string }[]>([]);
+  const [isRagSearching, setIsRagSearching] = useState(false);
+  const [showRagResults, setShowRagResults] = useState(false);
+
+  // Load from localStorage on mount
   useEffect(() => {
     const saved = loadEntries();
     setJournalEntries(saved);
   }, []);
 
-  /* ─── Persist to localStorage whenever entries change ──── */
+  // Persist to localStorage whenever entries change
   useEffect(() => {
     if (journalEntries.length > 0 || localStorage.getItem(STORAGE_KEY)) {
       saveEntries(journalEntries);
@@ -377,7 +374,7 @@ export default function AccountingView({
     }
   }, [journalEntries]);
 
-  /* ─── Add Manual Entry ──────────────────────────────────── */
+  // Add Manual Entry
   const addManualEntry = useCallback(() => {
     if (!formDate || !formDesc.trim() || !formDebit || !formCredit || !formAmount || Number(formAmount) <= 0) {
       return;
@@ -402,7 +399,7 @@ export default function AccountingView({
     setFormNarration('');
   }, [formDate, formDesc, formDebit, formCredit, formAmount, formNarration]);
 
-  /* ─── Parse Natural Language Entry via LLM ──────────────── */
+  // Parse Natural Language Entry via LLM
   const parseNaturalLanguage = useCallback(async () => {
     if (!nlInput.trim()) return;
 
@@ -559,19 +556,19 @@ Rules:
     }
   }, [nlInput, apiKey, generationModel, simulationMode]);
 
-  /* ─── Delete Entry ──────────────────────────────────────── */
+  // Delete Entry
   const deleteEntry = useCallback((id: string) => {
     setJournalEntries(prev => prev.filter(e => e.id !== id));
     setIssues(prev => prev.filter(i => !i.relatedEntries.includes(id)));
     if (expandedEntryId === id) setExpandedEntryId(null);
   }, [expandedEntryId]);
 
-  /* ─── Toggle Verify ─────────────────────────────────────── */
+  // Toggle Verify
   const toggleVerify = useCallback((id: string) => {
     setJournalEntries(prev => prev.map(e => e.id === id ? { ...e, isVerified: !e.isVerified } : e));
   }, []);
 
-  /* ─── Scan for Issues ───────────────────────────────────── */
+  // Scan for Issues
   const handleScan = useCallback(() => {
     if (journalEntries.length === 0) return;
     setIsScanning(true);
@@ -583,11 +580,176 @@ Rules:
     }, 600);
   }, [journalEntries]);
 
-  /* ─── AI Analysis ───────────────────────────────────────── */
+  // Offline Rule-Based Analysis
+  const generateOfflineAnalysis = useCallback((): string => {
+    if (journalEntries.length === 0) return 'No journal entries to analyze.';
+
+    const totalDebitAmt = trialBalance.reduce((s, t) => s + t.debit, 0);
+    const totalCreditAmt = trialBalance.reduce((s, t) => s + t.credit, 0);
+    const balanced = Math.abs(totalDebitAmt - totalCreditAmt) < 0.01;
+
+    // Group entries by account type
+    const accountTypes = new Map<string, Set<string>>();
+    for (const entry of journalEntries) {
+      const dInfo = ACCOUNT_MAP.get(entry.debitAccount);
+      const cInfo = ACCOUNT_MAP.get(entry.creditAccount);
+      if (dInfo) {
+        if (!accountTypes.has(dInfo.type)) accountTypes.set(dInfo.type, new Set());
+        accountTypes.get(dInfo.type)!.add(entry.debitAccount);
+      }
+      if (cInfo) {
+        if (!accountTypes.has(cInfo.type)) accountTypes.set(cInfo.type, new Set());
+        accountTypes.get(cInfo.type)!.add(entry.creditAccount);
+      }
+    }
+
+    // Compute health score
+    let healthScore = 50; // Base score
+    if (balanced) healthScore += 25; // Trial balance is balanced
+    else healthScore -= 20;
+    if (criticalCount === 0) healthScore += 10;
+    else healthScore -= criticalCount * 5;
+    if (warningCount === 0) healthScore += 5;
+    else healthScore -= warningCount * 3;
+    const verifiedCount = journalEntries.filter(e => e.isVerified).length;
+    const verifyPct = journalEntries.length > 0 ? verifiedCount / journalEntries.length : 0;
+    healthScore += Math.round(verifyPct * 10);
+    healthScore = Math.max(0, Math.min(100, healthScore));
+
+    const healthLabel = healthScore >= 80 ? 'Good' : healthScore >= 60 ? 'Fair' : healthScore >= 40 ? 'Needs Attention' : 'Critical';
+    const healthEmoji = healthScore >= 80 ? '🟢' : healthScore >= 60 ? '🟡' : healthScore >= 40 ? '🟠' : '🔴';
+
+    let md = `## 📊 Accounting Assessment (Rule-Based Analysis)\n\n`;
+    md += `> **Health Score: ${healthEmoji} ${healthScore}/100 — ${healthLabel}**\n\n`;
+
+    // 1. Trial Balance Status
+    md += `### 1. Trial Balance Status\n\n`;
+    md += balanced
+      ? `✅ **Balanced** — Total Debits (${formatCurrency(totalDebitAmt)}) equal Total Credits (${formatCurrency(totalCreditAmt)}). Double-entry principle is maintained.\n\n`
+      : `❌ **Imbalanced** — Debits (${formatCurrency(totalDebitAmt)}) differ from Credits (${formatCurrency(totalCreditAmt)}) by ${formatCurrency(Math.abs(totalDebitAmt - totalCreditAmt))}. Investigation required.\n\n`;
+
+    // 2. Account Distribution
+    md += `### 2. Account Distribution\n\n`;
+    md += `| Type | Accounts Used |\n|------|--------------|\n`;
+    for (const [type, accounts] of accountTypes) {
+      md += `| ${type.charAt(0).toUpperCase() + type.slice(1)} | ${[...accounts].join(', ')} |\n`;
+    }
+    md += `\n`;
+
+    // 3. Entry Quality Review
+    md += `### 3. Entry Quality Review\n\n`;
+    md += `- **Total Entries:** ${journalEntries.length}\n`;
+    md += `- **Verified Entries:** ${verifiedCount} (${Math.round(verifyPct * 100)}%)\n`;
+    md += `- **Unverified Entries:** ${journalEntries.length - verifiedCount}\n`;
+
+    const avgAmount = journalEntries.reduce((s, e) => s + e.amount, 0) / journalEntries.length;
+    md += `- **Average Entry Amount:** ${formatCurrency(avgAmount)}\n`;
+    md += `- **Largest Entry:** ${formatCurrency(Math.max(...journalEntries.map(e => e.amount)))}\n`;
+    md += `- **Smallest Entry:** ${formatCurrency(Math.min(...journalEntries.map(e => e.amount)))}\n\n`;
+
+    // 4. Issues Detected
+    md += `### 4. Issues Detected\n\n`;
+    if (issues.length === 0) {
+      md += `✅ No issues detected in the current scan. Run "Scan for Issues" first for a comprehensive check.\n\n`;
+    } else {
+      md += `| Severity | Category | Description |\n|----------|----------|-------------|\n`;
+      for (const issue of issues) {
+        const icon = issue.severity === 'critical' ? '🔴' : issue.severity === 'warning' ? '🟡' : 'ℹ️';
+        md += `| ${icon} ${issue.severity} | ${issue.category} | ${issue.description.slice(0, 80)}${issue.description.length > 80 ? '...' : ''} |\n`;
+      }
+      md += `\n`;
+      if (issues.some(i => i.severity === 'critical')) {
+        md += `⚠️ **Critical issues require immediate attention.** Review the Issues tab for detailed suggestions.\n\n`;
+      }
+    }
+
+    // 5. Compliance Notes
+    md += `### 5. Compliance Notes\n\n`;
+    const hasGST = journalEntries.some(e => e.debitAccount.includes('GST') || e.creditAccount.includes('GST'));
+    if (!hasGST) {
+      md += `- ⚠️ **No GST entries detected.** If your business is registered under GST, ensure all taxable transactions include appropriate GST accounting entries.\n`;
+    } else {
+      md += `- ✅ GST entries are present in the records.\n`;
+    }
+    const hasDepreciation = journalEntries.some(e => e.debitAccount === 'Depreciation');
+    if (!hasDepreciation && accountTypes.has('asset')) {
+      md += `- 💡 **No depreciation entries found.** If you have fixed assets (Equipment, Furniture, Land & Building), ensure depreciation is recorded as per Schedule II of the Companies Act 2013.\n`;
+    }
+    if (accountTypes.has('revenue')) {
+      md += `- 💡 Revenue accounts detected — ensure proper recognition as per Ind AS 115 (Revenue from Contracts with Customers).\n`;
+    }
+    md += `- 📋 All entries should comply with Indian Accounting Standards (Ind AS) and the Companies Act 2013.\n\n`;
+
+    // 6. Key Insights
+    md += `### 6. Key Insights\n\n`;
+    const assetAccounts = trialBalance.filter(t => ACCOUNT_MAP.get(t.accountName)?.type === 'asset');
+    const liabilityAccounts = trialBalance.filter(t => ACCOUNT_MAP.get(t.accountName)?.type === 'liability');
+    const revenueAccounts = trialBalance.filter(t => ACCOUNT_MAP.get(t.accountName)?.type === 'revenue');
+    const expenseAccounts = trialBalance.filter(t => ACCOUNT_MAP.get(t.accountName)?.type === 'expense');
+
+    const totalAssets = assetAccounts.reduce((s, t) => s + t.debit - t.credit, 0);
+    const totalLiabilities = liabilityAccounts.reduce((s, t) => s + t.credit - t.debit, 0);
+    const totalRevenue = revenueAccounts.reduce((s, t) => s + t.credit - t.debit, 0);
+    const totalExpenses = expenseAccounts.reduce((s, t) => s + t.debit - t.credit, 0);
+
+    if (totalRevenue > 0 && totalExpenses > 0) {
+      const netProfit = totalRevenue - totalExpenses;
+      md += `- **Net Position:** ${netProfit >= 0 ? 'Profit' : 'Loss'} of ${formatCurrency(Math.abs(netProfit))}\n`;
+    }
+    if (totalAssets > 0 && totalLiabilities > 0) {
+      const debtToAsset = totalLiabilities / totalAssets;
+      md += `- **Debt-to-Asset Ratio:** ${debtToAsset.toFixed(2)} ${debtToAsset > 0.5 ? '(⚠️ high leverage)' : '(✅ healthy)'}\n`;
+    }
+    md += `- **Accounts Tracked:** ${trialBalance.length} across ${accountTypes.size} categories\n`;
+    md += `\n*This is a rule-based analysis. Add a Gemini API key for AI-powered insights with contextual understanding.*\n`;
+
+    return md;
+  }, [journalEntries, trialBalance, issues, criticalCount, warningCount]);
+
+  // RAG Document Search
+  const handleRAGSearch = useCallback(() => {
+    if (chunks.length === 0) return;
+    setIsRagSearching(true);
+    setShowRagResults(true);
+
+    // Search for accounting-related chunks using keyword matching
+    const accountingKeywords = ['accounting', 'journal', 'ledger', 'debit', 'credit', 'balance', 'trial balance', 'entry', 'bookkeeping', 'revenue', 'expense', 'asset', 'liability', 'equity', 'income', 'profit', 'loss', 'gst', 'tax', 'depreciation', 'audit', 'financial statement', 'ind as', 'gaap'];
+    const entryKeywords = journalEntries.flatMap(e => [e.debitAccount.toLowerCase(), e.creditAccount.toLowerCase(), e.description.toLowerCase()]);
+
+    const scored = chunks.map(chunk => {
+      const lower = chunk.content.toLowerCase();
+      let score = 0;
+      for (const kw of accountingKeywords) {
+        if (lower.includes(kw)) score += 2;
+      }
+      for (const kw of entryKeywords) {
+        if (lower.includes(kw)) score += 3;
+      }
+      return { chunk, score };
+    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 8);
+
+    // Build results with document titles
+    const results = scored.map(s => ({
+      content: s.chunk.content,
+      section: s.chunk.section,
+      documentTitle: s.chunk.documentId, // We'll use the id as fallback
+    }));
+
+    setRagChunks(results);
+    setIsRagSearching(false);
+  }, [chunks, journalEntries]);
+
+  // AI Analysis
   const handleAIAnalysis = useCallback(async () => {
     if (journalEntries.length === 0) return;
     if (!apiKey && !simulationMode) {
-      setAiAnalysis('⚠️ Please configure your Gemini API key in Settings to enable AI analysis. The API key is required to use Gemma 4 31B IT for intelligent accounting analysis.');
+      // Use offline rule-based analysis instead of just a warning
+      setIsAnalyzing(true);
+      setAiAnalysis('');
+      // Simulate brief delay for UX
+      await new Promise(r => setTimeout(r, 400));
+      setAiAnalysis(generateOfflineAnalysis());
+      setIsAnalyzing(false);
       return;
     }
 
@@ -608,7 +770,21 @@ Rules:
         ? issues.map(i => `- [${i.severity.toUpperCase()}] ${i.category}: ${i.description}`).join('\n')
         : 'No issues detected in basic scan.';
 
-      const systemPrompt = `You are NEXUS Accounting AI, an expert Indian chartered accountant powered by Gemma 4. Analyze the provided journal entries and provide comprehensive insights.
+      // Include RAG context if chunks are available
+      const accountingChunks = chunks.filter(c => {
+        const lower = c.content.toLowerCase();
+        return lower.includes('accounting') || lower.includes('journal') || lower.includes('ledger') ||
+               lower.includes('debit') || lower.includes('credit') || lower.includes('balance') ||
+               lower.includes('revenue') || lower.includes('expense') || lower.includes('asset') ||
+               lower.includes('liability') || lower.includes('gst') || lower.includes('tax') ||
+               lower.includes('financial') || lower.includes('income') || lower.includes('profit');
+      }).slice(0, 5);
+
+      const ragContext = accountingChunks.length > 0
+        ? `\n\n**Relevant Document Excerpts:**\n${accountingChunks.map((c, i) => `[Source ${i + 1}${c.section ? ` | ${c.section}` : ''}]: ${c.content.slice(0, 400)}`).join('\n\n')}\n\nUse the above document context to provide more specific, contextual analysis where applicable.`
+        : '';
+
+      const systemPrompt = `You are NEXUS Accounting AI, an expert Indian chartered accountant powered by Gemini AI. Analyze the provided journal entries and provide comprehensive insights.${accountingChunks.length > 0 ? ' Also reference the provided financial document excerpts where relevant.' : ''}
 
 Provide your analysis in the following structured format:
 
@@ -649,7 +825,7 @@ ${issuesText}
 
 Total entries: ${journalEntries.length}
 Total debit balance: ₹${trialBalance.reduce((s, t) => s + t.debit, 0).toLocaleString('en-IN')}
-Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLocaleString('en-IN')}`;
+Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLocaleString('en-IN')}${ragContext}`;
 
       const res = await fetch('/api/gemini', {
         method: 'POST',
@@ -675,9 +851,9 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
       setIsAnalyzing(false);
       setIsProcessing(false);
     }
-  }, [journalEntries, trialBalance, issues, apiKey, generationModel, simulationMode, setIsProcessing]);
+  }, [journalEntries, trialBalance, issues, apiKey, generationModel, simulationMode, setIsProcessing, chunks]);
 
-  /* ─── Clear All ─────────────────────────────────────────── */
+  // Clear All
   const clearAll = useCallback(() => {
     setJournalEntries([]);
     setIssues([]);
@@ -687,7 +863,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  /* ─── Derived Values ────────────────────────────────────── */
+  // Derived Values
   const totalDebit = trialBalance.reduce((s, t) => s + t.debit, 0);
   const totalCredit = trialBalance.reduce((s, t) => s + t.credit, 0);
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01;
@@ -695,13 +871,11 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
   const warningCount = issues.filter(i => i.severity === 'warning').length;
   const infoCount = issues.filter(i => i.severity === 'info').length;
 
-  /* ═══════════════════════════════════════════════════════════
-     Render
-     ═══════════════════════════════════════════════════════════ */
+  // Render
 
   return (
     <div className="space-y-6">
-      {/* ─── Header ───────────────────────────────────────── */}
+      {/* Header */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="border-emerald-600/20 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20">
           <CardHeader>
@@ -716,6 +890,12 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
+                {!apiKey && !simulationMode && (
+                  <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/30 text-emerald-600">
+                    <Lightbulb className="w-2.5 h-2.5" />
+                    Works offline — add API key for AI insights
+                  </Badge>
+                )}
                 {journalEntries.length > 0 && (
                   <Button
                     variant="outline"
@@ -733,7 +913,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
         </Card>
       </motion.div>
 
-      {/* ─── Stats Row ────────────────────────────────────── */}
+      {/* Stats Row */}
       {journalEntries.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card>
@@ -765,7 +945,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
         </motion.div>
       )}
 
-      {/* ─── Tabs ─────────────────────────────────────────── */}
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="journal" className="text-xs gap-1">
@@ -792,10 +972,10 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           </TabsTrigger>
         </TabsList>
 
-        {/* ═══ Tab: Journal Entry Creator ═════════════════════ */}
+        {/* Tab: Journal Entry Creator */}
         <TabsContent value="journal" className="space-y-4 mt-4">
           {/* Manual Entry Form */}
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Plus className="w-4 h-4 text-emerald-600" />
@@ -911,7 +1091,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           </Card>
 
           {/* Natural Language Entry */}
-          <Card className="border-emerald-600/20">
+          <Card className="border-emerald-600/20 overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -966,7 +1146,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           </Card>
         </TabsContent>
 
-        {/* ═══ Tab: Journal Entries List ══════════════════════ */}
+        {/* Tab: Journal Entries List */}
         <TabsContent value="entries" className="space-y-4 mt-4">
           {journalEntries.length === 0 ? (
             <Card>
@@ -1005,8 +1185,8 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                         <TableBody>
                           {trialBalance.map(tb => (
                             <TableRow key={tb.accountName}>
-                              <TableCell className="text-xs font-medium">
-                                {tb.accountName}
+                              <TableCell className="text-xs font-medium min-w-0">
+                                <span className="break-all">{tb.accountName}</span>
                                 <span className="ml-1.5 text-[9px] text-muted-foreground">
                                   ({ACCOUNT_MAP.get(tb.accountName)?.type || 'unknown'})
                                 </span>
@@ -1054,7 +1234,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="max-h-[500px]">
+                  <ScrollArea className="max-h-[70vh]">
                     <div className="space-y-2 pr-2">
                       <AnimatePresence>
                         {journalEntries.map((entry, i) => {
@@ -1202,7 +1382,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           )}
         </TabsContent>
 
-        {/* ═══ Tab: Issues ════════════════════════════════════ */}
+        {/* Tab: Issues */}
         <TabsContent value="issues" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
@@ -1273,7 +1453,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="max-h-[500px]">
+                  <ScrollArea className="max-h-[70vh]">
                     <div className="space-y-2 pr-2">
                       {issues.map((issue, i) => (
                         <motion.div
@@ -1303,10 +1483,10 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                             </Badge>
                             <Badge variant="secondary" className="text-[9px] h-5">{issue.category}</Badge>
                           </div>
-                          <p className="text-xs font-medium mb-1">{issue.description}</p>
+                          <p className="text-xs font-medium mb-1 break-words">{issue.description}</p>
                           <div className="flex items-start gap-1">
                             <Lightbulb className="w-3 h-3 text-emerald-600 mt-0.5 shrink-0" />
-                            <p className="text-[11px] text-muted-foreground">{issue.suggestion}</p>
+                            <p className="text-[11px] text-muted-foreground break-words">{issue.suggestion}</p>
                           </div>
                         </motion.div>
                       ))}
@@ -1342,7 +1522,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           )}
         </TabsContent>
 
-        {/* ═══ Tab: AI Analysis ═══════════════════════════════ */}
+        {/* Tab: AI Analysis */}
         <TabsContent value="analysis" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
@@ -1353,20 +1533,80 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                     AI-Powered Accounting Analysis
                   </CardTitle>
                   <CardDescription className="text-xs mt-1">
-                    Comprehensive analysis using {generationModel || 'Gemma 4 31B IT'} — identifies improper practices, suggests corrections, and checks Ind AS compliance
+                    {apiKey || simulationMode
+                      ? `Comprehensive analysis using ${generationModel || 'Gemini AI'} — identifies improper practices, suggests corrections, and checks Ind AS compliance`
+                      : 'Rule-based analysis of your journal entries, trial balance, and detected issues — works offline'
+                    }
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={handleAIAnalysis}
-                  disabled={isAnalyzing || journalEntries.length === 0}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-                >
-                  {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                  {isAnalyzing ? 'Analyzing...' : 'Analyze with AI'}
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    onClick={handleAIAnalysis}
+                    disabled={isAnalyzing || journalEntries.length === 0}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                  >
+                    {isAnalyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    {isAnalyzing ? 'Analyzing...' : (apiKey || simulationMode) ? 'Analyze with AI' : 'Analyze (Offline)'}
+                  </Button>
+                  {chunks.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRAGSearch}
+                      disabled={isRagSearching || journalEntries.length === 0}
+                      className="text-xs gap-1"
+                    >
+                      {isRagSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <ScanSearch className="w-3 h-3" />}
+                      Analyze with Documents
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
           </Card>
+
+          {/* RAG Document Chunks */}
+          {showRagResults && ragChunks.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                    Relevant Document Excerpts
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowRagResults(false)} className="h-6 text-xs">
+                    Hide
+                  </Button>
+                </div>
+                <CardDescription className="text-xs">
+                  {ragChunks.length} matching chunks from your uploaded documents — providing context for your accounting entries
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[300px]">
+                  <div className="space-y-3">
+                    {ragChunks.map((chunk, i) => (
+                      <div key={i} className="p-3 rounded-lg border border-border bg-muted/30">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <Badge variant="secondary" className="text-[9px] h-4">
+                            Source {i + 1}
+                          </Badge>
+                          {chunk.section && (
+                            <Badge variant="outline" className="text-[9px] h-4">
+                              {chunk.section}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed break-words">
+                          {chunk.content.slice(0, 300)}{chunk.content.length > 300 ? '...' : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
 
           {isAnalyzing && (
             <Card>
@@ -1394,8 +1634,8 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ScrollArea className="max-h-[600px]">
-                  <div className="prose prose-sm dark:prose-invert max-w-none pr-4">
+                <ScrollArea className="max-h-[50vh]">
+                  <div className="prose prose-sm dark:prose-invert max-w-none pr-4 break-words">
                     {aiAnalysis.split('\n').map((line, i) => {
                       // Basic markdown-like rendering
                       if (line.startsWith('## ')) {

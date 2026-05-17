@@ -1,8 +1,7 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — RAG Pipeline Orchestration Hook
-   Core state management + full chunk→embed→store→retrieve→generate pipeline
-   Powered by Gemini Embedding 2 + Gemma 4 31B IT
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * RAG Pipeline Orchestration Hook
+ * Core state management for chunk→embed→store→retrieve→generate pipeline
+ */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
@@ -33,7 +32,7 @@ import {
   loadConfigFromHot,
 } from '@/lib/storage';
 
-/* ─── Agent step definitions ──────────────────────────────── */
+// Agent step definitions
 
 const AGENT_STEP_DEFS: { agent: string; label: string }[] = [
   { agent: 'Retrieval', label: 'Retrieving relevant chunks' },
@@ -51,13 +50,13 @@ function makeInitialSteps(): AgentStep[] {
   }));
 }
 
-/* ─── Unique ID helper ────────────────────────────────────── */
+// Unique ID helper
 
 function uid(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/* ─── Document type detection ─────────────────────────────── */
+// Document type detection
 
 function detectDocType(filename: string): string {
   const lower = filename.toLowerCase();
@@ -84,12 +83,10 @@ function detectSector(filename: string): string | null {
   return null;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Hook: useRAGPipeline
-   ═══════════════════════════════════════════════════════════ */
+// useRAGPipeline Hook
 
 export function useRAGPipeline() {
-  /* ─── Core State ─────────────────────────────────────────── */
+  // Core State
   const [mode, setModeState] = useState<AppMode>('demo');
   const [documents, setDocuments] = useState<DocInfo[]>(DEMO_DOCUMENTS);
   const [chunks, setChunks] = useState<ChunkInfo[]>(DEMO_CHUNKS);
@@ -105,16 +102,16 @@ export function useRAGPipeline() {
     if (savedConfig) setConfigState({ ...DEFAULT_CONFIG, ...savedConfig });
   }, []);
 
-  /* ─── Query State ────────────────────────────────────────── */
+  // Query State
   const [queryResult, setQueryResult] = useState<string>('');
   const [citedChunks, setCitedChunks] = useState<CitedChunk[]>([]);
   const [metrics, setMetrics] = useState<QueryMetrics | null>(null);
   const [agentSteps, setAgentSteps] = useState<AgentStep[]>(makeInitialSteps());
 
-  /* ─── Compliance State ───────────────────────────────────── */
+  // Compliance State
   const [complianceFindings, setComplianceFindings] = useState<ComplianceFinding[]>([]);
 
-  /* ─── Processing State ───────────────────────────────────── */
+  // Processing State
   const [isProcessing, setIsProcessing] = useState(false);
   const [embeddingProgress, setEmbeddingProgress] = useState<{
     done: number;
@@ -122,12 +119,10 @@ export function useRAGPipeline() {
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  /* ─── Refs ───────────────────────────────────────────────── */
+  // Refs
   const vectorDBRef = useRef<MemoryVectorDB>(new MemoryVectorDB());
 
-  /* ═══════════════════════════════════════════════════════════
-     Mode Switching
-     ═══════════════════════════════════════════════════════════ */
+  // Mode Switching
 
   const setMode = useCallback(
     (newMode: AppMode) => {
@@ -178,18 +173,14 @@ export function useRAGPipeline() {
     [config.embeddingDimensions]
   );
 
-  /* ═══════════════════════════════════════════════════════════
-     API Key
-     ═══════════════════════════════════════════════════════════ */
+  // API Key
 
   const setApiKey = useCallback((key: string) => {
     setApiKeyState(key);
     saveApiKeyToHot(key);
   }, []);
 
-  /* ═══════════════════════════════════════════════════════════
-     Config
-     ═══════════════════════════════════════════════════════════ */
+  // Config
 
   const setConfig = useCallback((update: Partial<PipelineConfig>) => {
     setConfigState((prev) => {
@@ -199,9 +190,7 @@ export function useRAGPipeline() {
     });
   }, []);
 
-  /* ═══════════════════════════════════════════════════════════
-     Internal Helpers
-     ═══════════════════════════════════════════════════════════ */
+  // Internal Helpers
 
   const clearQueryState = useCallback(() => {
     setQueryResult('');
@@ -290,9 +279,7 @@ export function useRAGPipeline() {
     [apiKey, config, mode, documents, chunks]
   );
 
-  /* ═══════════════════════════════════════════════════════════
-     Document Upload (File)
-     ═══════════════════════════════════════════════════════════ */
+  // Document Upload (File)
 
   const uploadDocument = useCallback(
     async (file: File) => {
@@ -371,9 +358,7 @@ export function useRAGPipeline() {
     [config.chunkSize, config.chunkOverlap, embedAndStore]
   );
 
-  /* ═══════════════════════════════════════════════════════════
-     Document Paste (Text)
-     ═══════════════════════════════════════════════════════════ */
+  // Document Paste (Text)
 
   const pasteDocument = useCallback(
     async (
@@ -432,9 +417,7 @@ export function useRAGPipeline() {
     [config.chunkSize, config.chunkOverlap, embedAndStore]
   );
 
-  /* ═══════════════════════════════════════════════════════════
-     Document Deletion
-     ═══════════════════════════════════════════════════════════ */
+  // Document Deletion
 
   const deleteDocument = useCallback(
     (docId: string) => {
@@ -460,9 +443,7 @@ export function useRAGPipeline() {
     [documents, chunks, mode, clearQueryState]
   );
 
-  /* ═══════════════════════════════════════════════════════════
-     Full RAG Query Pipeline
-     ═══════════════════════════════════════════════════════════ */
+  // Full RAG Query Pipeline
 
   const runQuery = useCallback(
     async (query: string) => {
@@ -484,7 +465,7 @@ export function useRAGPipeline() {
       };
 
       try {
-        /* ─── Step 0: Retrieval ──────────────────────────── */
+        // Step 0: Retrieval
         const retrievalStart = performance.now();
         updateStep(0, { status: 'running', output: 'Searching document chunks...' });
 
@@ -526,7 +507,7 @@ export function useRAGPipeline() {
           output: `Retrieved ${retrievedChunks.length} chunks from ${chunks.length} total`,
         });
 
-        /* ─── Step 1: Ranking ────────────────────────────── */
+        // Step 1: Ranking
         const rankingStart = performance.now();
         updateStep(1, { status: 'running', output: 'Scoring and ranking...' });
 
@@ -556,7 +537,7 @@ export function useRAGPipeline() {
 
         setCitedChunks(cited);
 
-        /* ─── Step 2: Reasoning ──────────────────────────── */
+        // Step 2: Reasoning
         const reasoningStart = performance.now();
         updateStep(2, { status: 'running', output: 'Analyzing retrieved context...' });
 
@@ -575,7 +556,7 @@ export function useRAGPipeline() {
           output: `Context assembled from ${retrievedChunks.length} sources`,
         });
 
-        /* ─── Step 3: Synthesis ─────────────────────────── */
+        // Step 3: Synthesis
         const synthesisStart = performance.now();
         updateStep(3, { status: 'running', output: 'Generating response...' });
 
@@ -583,8 +564,8 @@ export function useRAGPipeline() {
         let synthesisMs: number;
 
         if (apiKey && !config.simulationMode) {
-          // Call /api/gemini for LLM synthesis using Gemma 4 31B IT
-          const systemPrompt = `You are NEXUS, an expert financial document analysis AI powered by Gemma 4 31B. Answer the user's question based ONLY on the provided context. Cite sources using [Source N] notation. If the context doesn't contain enough information, say so clearly. Focus on accuracy and cite specific numbers, risk factors, and findings from the documents.
+          // Call /api/gemini for LLM synthesis
+          const systemPrompt = `You are NEXUS, an expert financial document analysis AI powered by Gemini. Answer the user's question based ONLY on the provided context. Cite sources using [Source N] notation. If the context doesn't contain enough information, say so clearly. Focus on accuracy and cite specific numbers, risk factors, and findings from the documents.
 
 Context:
 ${context}`;
@@ -673,9 +654,7 @@ ${context}`;
     [chunks, config, apiKey, clearQueryState]
   );
 
-  /* ═══════════════════════════════════════════════════════════
-     Compliance Scanning
-     ═══════════════════════════════════════════════════════════ */
+  // Compliance Scanning
 
   const runComplianceScan = useCallback(() => {
     if (chunks.length === 0) return;
@@ -683,18 +662,14 @@ ${context}`;
     setComplianceFindings(findings);
   }, [chunks]);
 
-  /* ═══════════════════════════════════════════════════════════
-     Clear Query
-     ═══════════════════════════════════════════════════════════ */
+  // Clear Query
 
   const clearQuery = useCallback(() => {
     clearQueryState();
     setError(null);
   }, [clearQueryState]);
 
-  /* ═══════════════════════════════════════════════════════════
-     Return Hook Interface
-     ═══════════════════════════════════════════════════════════ */
+  // Return Hook Interface
 
   return {
     // State
@@ -726,9 +701,7 @@ ${context}`;
   };
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Helper: Build retrieval-only response
-   ═══════════════════════════════════════════════════════════ */
+/** Build retrieval-only response when LLM is unavailable */
 
 function buildRetrievalOnlyResponse(
   query: string,
@@ -745,12 +718,10 @@ function buildRetrievalOnlyResponse(
     )
     .join('\n\n---\n\n');
 
-  return `## Retrieval Results for: "${query}"\n\n${sections}\n\n---\n*Add a Gemini API key to enable AI-powered synthesis with Gemma 4 31B for cross-referencing and analysis.*`;
+  return `## Retrieval Results for: "${query}"\n\n${sections}\n\n---\n*Add a Gemini API key to enable AI-powered synthesis with Gemini for cross-referencing and analysis.*`;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   Helper: Compute confidence score
-   ═══════════════════════════════════════════════════════════ */
+/** Compute confidence score from retrieved chunks */
 
 function computeConfidence(
   retrieved: (ChunkInfo & { score: number })[]

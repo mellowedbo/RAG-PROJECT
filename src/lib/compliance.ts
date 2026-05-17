@@ -1,7 +1,7 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Compliance Scanner
-   Regex pattern matching against SEC, SOX, FCPA, GDPR, OFAC, Basel III
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Compliance Scanner
+ * Regex pattern matching against SEC, SOX, FCPA, GDPR, OFAC, Basel III
+ */
 
 import type { ComplianceFinding, ChunkInfo } from '@/types';
 

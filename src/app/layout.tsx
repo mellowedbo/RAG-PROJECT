@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "next-themes";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
@@ -21,15 +22,17 @@ export const metadata: Metadata = {
     "RAG",
     "Agentic AI",
     "Financial Intelligence",
-    "LanceDB",
+    "Document Analysis",
     "Vector Search",
     "Earnings Analysis",
     "Risk Assessment",
-    "ML Finance",
+    "10-K Filings",
+    "Compliance",
+    "NEXUS",
   ],
   authors: [{ name: "NEXUS Platform" }],
   icons: {
-    icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
+    icon: "/logo.svg",
   },
 };
 
@@ -43,8 +46,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
       >
-        {children}
-        <Toaster />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

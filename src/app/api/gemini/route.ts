@@ -1,14 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rateLimit';
 
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Gemini API Proxy Route
-   Supports:
-   - Generation: Gemma 4 31B IT (gemma-4-31b-it)
-   - Embedding: Gemini Embedding 2 (gemini-embedding-2)
-     with task_type and output_dimensionality support
-   - Rate limiting: 10 req/day for demo key
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Gemini API Proxy Route
+ * Supports generation (with fallback chain) and embedding,
+ * rate limiting, and model fallback on 400/403/404 errors.
+ */
+
+// Model Fallback Chain
+
+const MODEL_FALLBACK_CHAIN: Record<string, string[]> = {
+  'gemini-2.5-pro-preview-05-06': ['gemini-2.5-flash-preview-05-20', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.5-flash-preview-05-20': ['gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.0-flash': ['gemini-1.5-flash', 'gemini-2.0-flash-lite'],
+  'gemini-2.0-flash-lite': ['gemini-1.5-flash'],
+  'gemini-1.5-flash': ['gemini-2.0-flash-lite'],
+  'gemini-1.5-pro': ['gemini-1.5-flash', 'gemini-2.0-flash'],
+  'gemma-3-27b-it': ['gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemma-3-12b-it': ['gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemma-3-4b-it': ['gemini-2.0-flash', 'gemini-1.5-flash'],
+};
+
+/** Status codes that trigger a fallback to the next model */
+const FALLBACK_STATUS_CODES = new Set([400, 403, 404]);
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,7 +58,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ─── Embedding mode (Gemini Embedding 2) ──────────────────
+    // Embedding mode (Gemini Embedding 2)
     if (mode === 'embed') {
       if (!apiKey || typeof apiKey !== 'string') {
         return NextResponse.json({ error: 'Gemini API key is required for embeddings' }, { status: 400 });
@@ -110,7 +124,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ─── Generation mode (Gemma 4 31B IT) ────────────────────
+    // Generation mode (with fallback chain)
     if (!apiKey || typeof apiKey !== 'string') {
       return NextResponse.json({ error: 'Gemini API key is required' }, { status: 400 });
     }
@@ -118,81 +132,129 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User prompt is required' }, { status: 400 });
     }
 
-    const genModel = model || 'gemma-4-31b-it';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${genModel}:generateContent?key=${apiKey}`;
+    const requestedModel = model || 'gemini-2.0-flash';
+    const fallbacks = MODEL_FALLBACK_CHAIN[requestedModel] || [];
+    const modelsToTry = [requestedModel, ...fallbacks];
 
-    const geminiBody: Record<string, unknown> = {
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userPrompt }],
-        },
-      ],
-      generationConfig: {
-        temperature: 1.0,    // Gemma 4 recommended
-        topP: 0.95,          // Gemma 4 recommended
-        topK: 64,            // Gemma 4 recommended
-        maxOutputTokens: 8192,
-      },
-    };
+    // Track which models we've already tried to avoid infinite loops
+    const triedModels = new Set<string>();
+    let lastError: string | null = null;
 
-    if (systemPrompt) {
-      geminiBody.systemInstruction = {
-        parts: [{ text: systemPrompt }],
-      };
-    }
+    for (const currentModel of modelsToTry) {
+      if (triedModels.has(currentModel)) continue;
+      triedModels.add(currentModel);
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiBody),
-    });
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey}`;
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = (errorData as Record<string, unknown>)?.error
-        ? ((errorData as Record<string, unknown>).error as Record<string, unknown>)?.message || 'Gemini API error'
-        : `Gemini API returned ${response.status}`;
-      return NextResponse.json(
-        { error: typeof errorMessage === 'string' ? errorMessage : 'Gemini API error' },
-        { status: response.status }
-      );
-    }
+        const geminiBody: Record<string, unknown> = {
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: userPrompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 1.0,
+            topP: 0.95,
+            topK: 64,
+            maxOutputTokens: 8192,
+          },
+        };
 
-    const data = await response.json();
-
-    // Gemma 4 with thinking mode may output thought channel
-    // Extract the final text response
-    const candidates = data?.candidates || [];
-    let text = '';
-
-    if (candidates.length > 0) {
-      const parts = candidates[0]?.content?.parts || [];
-      for (const part of parts) {
-        if (part.text && !part.thought) {
-          text += part.text;
+        if (systemPrompt) {
+          geminiBody.systemInstruction = {
+            parts: [{ text: systemPrompt }],
+          };
         }
-      }
-      // Fallback: if no non-thought text found, take any text
-      if (!text) {
-        for (const part of parts) {
-          if (part.text) {
-            text += part.text;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiBody),
+        });
+
+        // If the model is unavailable (400/403/404), try the next fallback
+        if (FALLBACK_STATUS_CODES.has(response.status) && triedModels.size < modelsToTry.length) {
+          const errData = await response.json().catch(() => ({}));
+          const errMsg = (errData as Record<string, unknown>)?.error
+            ? ((errData as Record<string, unknown>).error as Record<string, unknown>)?.message || `Model ${currentModel} unavailable`
+            : `Model ${currentModel} returned ${response.status}`;
+          lastError = typeof errMsg === 'string' ? errMsg : `Model ${currentModel} unavailable`;
+          console.warn(`[NEXUS] Model ${currentModel} failed (${response.status}), trying fallback...`);
+          continue;
+        }
+
+        // For non-fallback errors (429 rate limit, 500, etc.), return immediately
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = (errorData as Record<string, unknown>)?.error
+            ? ((errorData as Record<string, unknown>).error as Record<string, unknown>)?.message || 'Gemini API error'
+            : `Gemini API returned ${response.status}`;
+          return NextResponse.json(
+            { error: typeof errorMessage === 'string' ? errorMessage : 'Gemini API error' },
+            { status: response.status }
+          );
+        }
+
+        const data = await response.json();
+
+        // Models with thinking mode may output thought channel
+        // Extract the final text response
+        const candidates = data?.candidates || [];
+        let text = '';
+
+        if (candidates.length > 0) {
+          const parts = candidates[0]?.content?.parts || [];
+          for (const part of parts) {
+            if (part.text && !part.thought) {
+              text += part.text;
+            }
+          }
+          // Fallback: if no non-thought text found, take any text
+          if (!text) {
+            for (const part of parts) {
+              if (part.text) {
+                text += part.text;
+              }
+            }
           }
         }
+
+        if (!text) {
+          return NextResponse.json(
+            { error: 'No response generated by the model' },
+            { status: 500 }
+          );
+        }
+
+        // Return response with the model used in headers
+        const headers: Record<string, string> = {
+          'X-RateLimit-Remaining': String(remaining),
+          'X-Model-Used': currentModel,
+        };
+
+        // If we used a fallback model, include that info
+        if (currentModel !== requestedModel) {
+          headers['X-Model-Fallback'] = 'true';
+          headers['X-Original-Model'] = requestedModel;
+        }
+
+        return NextResponse.json({ response: text }, { headers });
+      } catch (fetchErr) {
+        // Network or other fetch error — try next fallback
+        lastError = fetchErr instanceof Error ? fetchErr.message : 'Unknown fetch error';
+        console.warn(`[NEXUS] Model ${currentModel} fetch error:`, lastError);
+        continue;
       }
     }
 
-    if (!text) {
-      return NextResponse.json(
-        { error: 'No response generated by the model' },
-        { status: 500 }
-      );
-    }
-
+    // All models failed — return helpful error
     return NextResponse.json(
-      { response: text },
-      { headers: { 'X-RateLimit-Remaining': String(remaining) } }
+      {
+        error: `All models failed. Requested: ${requestedModel}, tried: ${[...triedModels].join(' → ')}. Last error: ${lastError || 'unknown'}. Please try a different model in Settings or check your API key.`,
+      },
+      { status: 503 }
     );
   } catch (error) {
     console.error('Gemini API error:', error);

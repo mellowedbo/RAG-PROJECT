@@ -5,8 +5,9 @@ import { motion } from 'framer-motion';
 import {
   Network, Search, FolderOpen, LayoutDashboard, Terminal,
   Key, Eye, EyeOff, Zap, Check, Monitor, FlaskConical, BookOpen,
-  IndianRupee, BarChart3, Settings,
+  IndianRupee, BarChart3, Settings, Sun, Moon,
 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import {
 } from '@/components/ui/select';
 import type { AppMode } from '@/types';
 
-/* ═══════════════════════ API Key Input ═══════════════════════ */
+// API Key Input
 
 function ApiKeyInput({
   apiKey,
@@ -75,7 +76,37 @@ function ApiKeyInput({
   );
 }
 
-/* ═══════════════════════ Navigation ═══════════════════════ */
+// Navigation
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standard next-themes hydration pattern
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
+        <Sun className="h-4 w-4" />
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+    >
+      {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
+  );
+}
 
 interface NavigationProps {
   activeTab: string;
@@ -150,6 +181,9 @@ export default function Navigation({
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Theme toggle */}
+            <ThemeToggle />
+
             {/* Mode toggle */}
             <div className="flex items-center bg-muted rounded-lg p-0.5">
               <button

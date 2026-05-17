@@ -36,7 +36,7 @@ import {
 import type { PipelineConfig } from '@/types';
 import { DEFAULT_CONFIG, EMBEDDING_MODELS, GENERATION_MODELS } from '@/types';
 
-/* ═══════════════════════ Settings View ═══════════════════════ */
+// Settings View
 
 interface SettingsViewProps {
   apiKey: string;
@@ -249,7 +249,7 @@ export default function SettingsView({
                   <motion.div
                     key={model.id}
                     whileHover={{ scale: 1.01 }}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
                       config.embeddingModel === model.id
                         ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
                         : 'border-border hover:border-emerald-500/30'
@@ -257,16 +257,16 @@ export default function SettingsView({
                     onClick={() => updateConfig({ embeddingModel: model.id })}
                   >
                     <div className="flex items-start justify-between mb-1.5">
-                      <div>
-                        <div className="text-sm font-semibold flex items-center gap-1.5">
+                      <div className="min-w-0 overflow-hidden">
+                        <div className="text-sm font-semibold flex items-center gap-1.5 truncate">
                           {model.name}
                           {model.isRecommended && (
-                            <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5">
+                            <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5 shrink-0">
                               <Sparkles className="w-2.5 h-2.5" /> Recommended
                             </Badge>
                           )}
                         </div>
-                        <div className="text-[10px] text-muted-foreground font-mono">{model.id}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono truncate">{model.id}</div>
                       </div>
                       {config.embeddingModel === model.id && (
                         <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
@@ -274,7 +274,7 @@ export default function SettingsView({
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{model.description}</p>
+                    <p className="text-xs text-muted-foreground mb-2 leading-relaxed break-words">{model.description}</p>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="secondary" className="text-[9px] gap-0.5">
                         <Layers className="w-2.5 h-2.5" /> {model.dimensions}-dim
@@ -305,7 +305,7 @@ export default function SettingsView({
                   <motion.div
                     key={model.id}
                     whileHover={{ scale: 1.01 }}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
                       config.generationModel === model.id
                         ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
                         : 'border-border hover:border-emerald-500/30'
@@ -313,16 +313,16 @@ export default function SettingsView({
                     onClick={() => updateConfig({ generationModel: model.id })}
                   >
                     <div className="flex items-start justify-between mb-1.5">
-                      <div>
-                        <div className="text-sm font-semibold flex items-center gap-1.5">
+                      <div className="min-w-0 overflow-hidden">
+                        <div className="text-sm font-semibold flex items-center gap-1.5 truncate">
                           {model.name}
                           {model.isRecommended && (
-                            <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5">
+                            <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5 shrink-0">
                               <Sparkles className="w-2.5 h-2.5" /> Recommended
                             </Badge>
                           )}
                         </div>
-                        <div className="text-[10px] text-muted-foreground font-mono">{model.id}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono truncate">{model.id}</div>
                       </div>
                       {config.generationModel === model.id && (
                         <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
@@ -330,7 +330,7 @@ export default function SettingsView({
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2 leading-relaxed">{model.description}</p>
+                    <p className="text-xs text-muted-foreground mb-2 leading-relaxed break-words">{model.description}</p>
                     <div className="flex items-center gap-2 flex-wrap">
                       {model.maxTokens && (
                         <Badge variant="secondary" className="text-[9px] gap-0.5">
@@ -488,7 +488,7 @@ export default function SettingsView({
                 <Layers className="w-3 h-3" />Chunk Configuration
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
+                <div className="min-w-0">
                   <label className="text-xs font-medium mb-1.5 block">Chunk Size (chars)</label>
                   <Input
                     type="number"
@@ -500,7 +500,7 @@ export default function SettingsView({
                   />
                   <span className="text-[10px] text-muted-foreground mt-1 block">200–2000 characters per chunk</span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-xs font-medium mb-1.5 block">Overlap Size</label>
                   <Input
                     type="number"
@@ -512,7 +512,7 @@ export default function SettingsView({
                   />
                   <span className="text-[10px] text-muted-foreground mt-1 block">20–400 characters overlap between chunks</span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="text-xs font-medium mb-1.5 block">Top-K Retrieval</label>
                   <Input
                     type="number"
@@ -550,7 +550,7 @@ export default function SettingsView({
           <CardContent className="space-y-4">
             {/* Storage Usage */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-3 rounded-lg border border-border">
+              <div className="p-3 rounded-lg border border-border min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <Database className="w-3.5 h-3.5 text-emerald-600" />
                   <span className="text-xs font-medium">localStorage Usage</span>
@@ -558,7 +558,7 @@ export default function SettingsView({
                 <div className="text-lg font-bold">{storageMB} MB</div>
                 <div className="text-[10px] text-muted-foreground">of ~5 MB available (IndexedDB for vectors)</div>
               </div>
-              <div className="p-3 rounded-lg border border-border">
+              <div className="p-3 rounded-lg border border-border min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <Activity className="w-3.5 h-3.5 text-emerald-600" />
                   <span className="text-xs font-medium">Rate Limit Status</span>
@@ -568,7 +568,7 @@ export default function SettingsView({
                   Embedding: 100 RPM / Generation: 15 RPM
                 </div>
               </div>
-              <div className="p-3 rounded-lg border border-border">
+              <div className="p-3 rounded-lg border border-border min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <Monitor className="w-3.5 h-3.5 text-emerald-600" />
                   <span className="text-xs font-medium">Pipeline Mode</span>

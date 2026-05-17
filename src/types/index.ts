@@ -1,11 +1,11 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Shared Type Definitions
-   Financial Intelligence RAG Platform
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Shared Type Definitions
+ * Financial Intelligence RAG Platform
+ */
 
 export type AppMode = 'demo' | 'test';
 
-/* ─── Document & Chunk Types ──────────────────────────────── */
+// Document & Chunk Types
 
 export interface DocInfo {
   id: string;
@@ -31,7 +31,7 @@ export interface ChunkInfo {
   embedding?: number[];
 }
 
-/* ─── RAG Pipeline Types ─────────────────────────────────── */
+// RAG Pipeline Types
 
 export interface AgentStep {
   agent: string;
@@ -59,7 +59,7 @@ export interface QueryMetrics {
   confidenceScore: number;
 }
 
-/* ─── Model Catalog ──────────────────────────────────────── */
+// Model Catalog
 
 export interface ModelOption {
   id: string;
@@ -109,48 +109,14 @@ export const EMBEDDING_MODELS: ModelOption[] = [
 
 export const GENERATION_MODELS: ModelOption[] = [
   {
-    id: 'gemma-4-31b-it',
-    name: 'Gemma 4 31B IT',
-    description: 'Dense 30.7B params, 256K context, thinking mode, function calling — best reasoning',
-    provider: 'Google',
-    category: 'generation',
-    maxTokens: 8192,
-    isRecommended: true,
-  },
-  {
-    id: 'gemma-4-26b-a4b-it',
-    name: 'Gemma 4 26B A4B IT',
-    description: 'MoE architecture, 26B total / 4B active — fast and efficient, good for simpler tasks',
-    provider: 'Google',
-    category: 'generation',
-    maxTokens: 8192,
-  },
-  {
-    id: 'gemini-2.5-pro-preview-05-06',
-    name: 'Gemini 2.5 Pro',
-    description: 'Most capable Gemini model — deep thinking, 1M context, best for complex financial analysis',
-    provider: 'Google',
-    category: 'generation',
-    maxTokens: 65536,
-    isMultimodal: true,
-  },
-  {
-    id: 'gemini-2.5-flash-preview-05-20',
-    name: 'Gemini 2.5 Flash',
-    description: 'Latest Gemini with thinking mode — fast, strong reasoning, built-in tools',
-    provider: 'Google',
-    category: 'generation',
-    maxTokens: 65536,
-    isMultimodal: true,
-  },
-  {
     id: 'gemini-2.0-flash',
     name: 'Gemini 2.0 Flash',
-    description: 'Fast and versatile — good balance of speed and quality',
+    description: 'Fast and versatile — best balance of speed and quality, widely available',
     provider: 'Google',
     category: 'generation',
     maxTokens: 8192,
     isMultimodal: true,
+    isRecommended: true,
   },
   {
     id: 'gemini-2.0-flash-lite',
@@ -162,9 +128,45 @@ export const GENERATION_MODELS: ModelOption[] = [
     isMultimodal: true,
   },
   {
+    id: 'gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash',
+    description: 'Stable and fast — 1M context window, widely available globally',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+  },
+  {
+    id: 'gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro',
+    description: 'Most capable stable model — 1M context, best for complex analysis',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+  },
+  {
+    id: 'gemini-2.5-flash-preview-05-20',
+    name: 'Gemini 2.5 Flash (Preview)',
+    description: 'Latest with thinking mode — may not be available in all regions',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 65536,
+    isMultimodal: true,
+  },
+  {
+    id: 'gemini-2.5-pro-preview-05-06',
+    name: 'Gemini 2.5 Pro (Preview)',
+    description: 'Most capable Gemini — deep thinking, may not be available in all regions',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 65536,
+    isMultimodal: true,
+  },
+  {
     id: 'gemma-3-27b-it',
     name: 'Gemma 3 27B IT',
-    description: 'Open-weight Gemma 3 — 27B params, 96K context, strong instruction following',
+    description: 'Open-weight Gemma 3 — 27B params, 96K context, good reasoning',
     provider: 'Google',
     category: 'generation',
     maxTokens: 8192,
@@ -172,7 +174,7 @@ export const GENERATION_MODELS: ModelOption[] = [
   {
     id: 'gemma-3-12b-it',
     name: 'Gemma 3 12B IT',
-    description: 'Mid-size Gemma 3 — 12B params, efficient for standard financial queries',
+    description: 'Mid-size Gemma 3 — efficient for standard queries',
     provider: 'Google',
     category: 'generation',
     maxTokens: 8192,
@@ -180,15 +182,7 @@ export const GENERATION_MODELS: ModelOption[] = [
   {
     id: 'gemma-3-4b-it',
     name: 'Gemma 3 4B IT',
-    description: 'Compact Gemma 3 — 4B params, fast inference, good for simple tasks',
-    provider: 'Google',
-    category: 'generation',
-    maxTokens: 8192,
-  },
-  {
-    id: 'gemma-3-1b-it',
-    name: 'Gemma 3 1B IT',
-    description: 'Smallest Gemma 3 — 1B params, ultra-fast, basic instruction following',
+    description: 'Compact Gemma 3 — fast inference, simple tasks',
     provider: 'Google',
     category: 'generation',
     maxTokens: 8192,
@@ -197,7 +191,7 @@ export const GENERATION_MODELS: ModelOption[] = [
 
 export const ALL_MODELS = [...EMBEDDING_MODELS, ...GENERATION_MODELS];
 
-/* ─── Pipeline Config ────────────────────────────────────── */
+// Pipeline Config
 
 export interface PipelineConfig {
   chunkSize: number;
@@ -220,7 +214,7 @@ export const DEFAULT_CONFIG: PipelineConfig = {
   useEmbeddings: true,
   simulationMode: false,
   embeddingModel: 'gemini-embedding-2',
-  generationModel: 'gemma-4-31b-it',
+  generationModel: 'gemini-2.0-flash',
   embeddingDimensions: 768,
   embeddingTaskType: 'RETRIEVAL_DOCUMENT',
 };
@@ -231,7 +225,7 @@ export interface VectorSearchResult {
   metadata: ChunkInfo;
 }
 
-/* ─── Compliance Types ───────────────────────────────────── */
+// Compliance Types
 
 export interface ComplianceFinding {
   category: string;
@@ -242,7 +236,7 @@ export interface ComplianceFinding {
   excerpt: string;
 }
 
-/* ─── Accounting Types ───────────────────────────────────── */
+// Accounting Types
 
 export interface JournalEntry {
   id: string;
@@ -278,7 +272,7 @@ export interface AccountingIssue {
   relatedEntries: string[];
 }
 
-/* ─── Tax Types ──────────────────────────────────────────── */
+// Tax Types
 
 export type TaxRegime = 'old' | 'new';
 
@@ -334,7 +328,7 @@ export interface GSTResult {
   rate: number;
 }
 
-/* ─── Financial Analysis Types ───────────────────────────── */
+// Financial Analysis Types
 
 export interface FinancialRatio {
   name: string;
@@ -362,7 +356,7 @@ export interface AnalysisResult {
   recommendations: string[];
 }
 
-/* ─── Pipeline Stats ─────────────────────────────────────── */
+// Pipeline Stats
 
 export interface PipelineStats {
   totalQueries: number;

@@ -2,10 +2,9 @@
 
 # NEXUS
 
-### Agentic Intelligence for Finance
+**Agentic Intelligence for Finance**
 
-*A multi-agent RAG platform for financial document analysis — built by a finance student who believes regulatory intelligence should be accessible, not enterprise-priced.*
-
+[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)](https://github.com/mellowedbo/RAG-PROJECT)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Gemini](https://img.shields.io/badge/Gemini-2.0_Flash-4285F4?logo=google)](https://ai.google.dev/)
@@ -15,195 +14,111 @@
 
 ---
 
-## What Is This?
+A multi-agent RAG platform for financial document analysis. Upload 10-K filings, earnings reports, or risk assessments, ask a question in plain language, and a four-agent pipeline retrieves, ranks, reasons over, and synthesizes a citation-grounded answer.
 
-NEXUS is a **multi-agent Retrieval-Augmented Generation (RAG) platform** purpose-built for financial document analysis. Feed it 10-K filings, earnings reports, or risk assessments — ask a natural language question — and a coordinated pipeline of four specialized agents retrieves, ranks, reasons, and synthesizes a citation-grounded answer.
-
-**Two modes of operation:**
-
-| Mode | Description |
-|------|-------------|
-| **Demo Mode** | Pre-loaded with 3 sample financial documents (Tesla 10-K, Goldman Sachs Q4 earnings, JP Morgan risk assessment). Zero setup — hit the ground running. |
-| **Test Mode** | Upload your own financial documents via the browser. Everything persists in localStorage — no database server, no config files, no deployment complexity. |
-
-The entire stack runs client-side and deploys to Vercel on the free tier. A companion Google Colab notebook lets you run the same pipeline in Python with zero installation.
+> **Demo mode** ships with 3 sample documents (Tesla 10-K, Goldman Sachs Q4 earnings, JP Morgan risk assessment). No setup required. **Test mode** lets you upload your own files. All data persists in localStorage — no database server, no config files.
 
 ---
 
-## Why This Matters
+## Preview
 
-Financial analysts at institutional firms spend **6+ hours per filing** manually extracting risk factors, compliance red flags, and earnings signals from documents that are deliberately dense and opaque. Enterprise tools that automate this cost **$50K–$500K/year** in licensing.
-
-NEXUS asks a different question: *What if a finance student could build a functional version of this capability using free-tier cloud infrastructure and an agentic workflow architecture?*
-
-| Pain Point | NEXUS Approach |
-|------------|----------------|
-| Analysts read 200+ pages per filing | Query across documents in seconds |
-| Risk factors buried in footnotes and MD&A | Automated compliance scanning with severity classification |
-| Manual cross-filing comparison | Multi-document retrieval and synthesis |
-| LLM hallucinations in financial context | Citation-grounded responses with source tracking |
-| Enterprise tooling is cost-prohibitive | Free-tier compatible: Gemini API + Vercel + Colab = $0 |
-
----
-
-## Architecture — The Agentic Pipeline
-
-The core design decision was decomposing financial document analysis into **four discrete agent responsibilities**, each with a defined input contract, processing logic, and output contract. This isn't arbitrary layering — it mirrors how a human analyst actually works: read → find → evaluate → write.
-
-```
-                          NEXUS AGENTIC PIPELINE
-
-  ┌──────────────────────────────────────────────────────────────────────┐
-  │                                                                      │
-  │  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-  │  │  INGESTION   │────▶│  RETRIEVAL   │────▶│  REASONING   │────▶│  SYNTHESIS   │
-  │  │   AGENT      │     │   AGENT      │     │   AGENT      │     │   AGENT      │
-  │  ├─────────────┤     ├─────────────┤     ├─────────────┤     ├─────────────┤
-  │  │              │     │              │     │              │     │              │
-  │  │  Section     │     │  TF-IDF      │     │  Top-K       │     │  Gemini 2.0  │
-  │  │  Boundary    │     │  Scoring     │     │  Selection   │     │  Flash LLM   │
-  │  │  Detection   │     │              │     │              │     │              │
-  │  │              │     │  Section     │     │  Confidence  │     │  Citation    │
-  │  │  Semantic    │     │  Heading     │     │  Scoring     │     │  Grounded    │
-  │  │  Chunking    │     │  Bonus       │     │              │     │  Analysis    │
-  │  │              │     │              │     │  Relevance   │     │              │
-  │  │  Context     │     │  Stop-Word   │     │  Normalized  │     │  Structured  │
-  │  │  Overlap     │     │  Filtering   │     │  Ranking     │     │  Output      │
-  │  │              │     │              │     │              │     │              │
-  │  └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
-  │        │                    │                    │                    │
-  │   Raw Document          Scored               Top-K Chunks       Citation-
-  │   → Chunks              Chunks               + Confidence        Grounded
-  │                                              Score               Response
-  └──────────────────────────────────────────────────────────────────────┘
-
-  ┌──────────────────────────────────────────────────────────────────────┐
-  │  COMPLIANCE SCANNER (Parallel Agent)                                 │
-  │                                                                      │
-  │  Pattern matching against: SEC Reg S-K │ SOX §404 │ FCPA │ OFAC     │
-  │                            GDPR │ Basel III │ ASC Standards          │
-  │                                                                      │
-  │  Output: Severity-classified findings (Critical/High/Medium/Low)     │
-  └──────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Agent Descriptions
-
-### Agent 1 — Ingestion Agent
-
-**Responsibility:** Transform raw financial document text into semantically coherent chunks that preserve meaning across boundaries.
-
-Financial documents have structure — sections, items, parts. A naive character-count splitter would break mid-sentence in the middle of a risk factor, destroying the context an analyst needs. The Ingestion Agent solves this with a three-level fallback strategy:
-
-1. **Section boundary detection** — Regex patterns recognize `ITEM 1A`, `PART II`, `SECTION 3`, Markdown headings, and numbered section headers common in SEC filings
-2. **Paragraph boundary splitting** — Within sections, text splits on double newlines; overly long paragraphs (>1500 chars) fall back to sentence-level splitting
-3. **Context overlap** — Each chunk carries an 80-word tail from the previous chunk, ensuring that cross-boundary information (like a risk factor that spans two paragraphs) isn't lost
-
-Chunk metadata tracks word count, character count, and section heading — all used downstream by the Retrieval and Reasoning agents.
-
-### Agent 2 — Retrieval Agent
-
-**Responsibility:** Score every chunk against the user's query and surface the most relevant passages.
-
-The Retrieval Agent implements a **TF-IDF inspired scoring algorithm** with two finance-specific enhancements:
-
-- **Section-heading bonus (1.5x multiplier):** If a query asks about "risk factors" and a chunk's section heading contains "risk," that chunk is boosted — because in financial documents, section headings are high-signal metadata, not decoration
-- **Stop-word filtering:** A 70+ word stop list strips low-signal terms before scoring, reducing noise from legal boilerplate language ("the," "pursuant," "herein")
-
-The scoring formula: for each query term *t*, compute `TF(t, chunk) × IDF(t, corpus)`, sum across all query terms, then **normalize by √(chunk length)** to prevent long chunks from dominating simply because they contain more words.
-
-### Agent 3 — Reasoning Agent
-
-**Responsibility:** Select the optimal evidence set and quantify confidence.
-
-From the ranked candidate pool, the Reasoning Agent:
-
-1. **Selects Top-K chunks** (K=8 by default) — balancing breadth of evidence against LLM context window constraints
-2. **Filters zero-score chunks** — if no chunk scored above zero for the query, the system falls back to the top 5 candidates rather than returning nothing (a pragmatic choice: partial evidence beats no evidence)
-3. **Computes a confidence score** — `min(0.99, max(0.1, average_score / 10))` — calibrated to avoid false precision. This isn't a statistical confidence interval; it's a normalized relevance signal that tells the user how strongly the evidence maps to their question
-
-### Agent 4 — Synthesis Agent
-
-**Responsibility:** Transform the evidence set into a structured, citation-grounded financial analysis.
-
-The Synthesis Agent sends the top-K chunks to **Google Gemini 2.0 Flash** with a strict system prompt that enforces:
-
-- **Source-only reasoning:** Never fabricate data. If the documents don't contain the answer, say so explicitly
-- **Citation discipline:** Every factual claim tagged with `[Source X]` notation mapping back to the specific chunk
-- **Structured output:** Key Findings → Evidence → Risk Assessment → Limitations
-- **Conflict detection:** If multiple documents contain contradictory data, the system highlights the discrepancy
-
-This is the only agent that calls an external LLM — and it's gatekept behind the three prior agents so that the model only sees pre-filtered, high-relevance context. This architecture decision dramatically reduces hallucination surface area compared to naive "paste the whole document into ChatGPT" approaches.
-
-### Compliance Scanner — Parallel Agent
-
-**Responsibility:** Detect regulatory compliance red flags across all document chunks.
-
-Runs independently of the query pipeline. Uses regex pattern matching against **30+ compliance patterns** organized into four categories:
-
-| Category | Regulations Covered | Example Detection |
-|----------|-------------------|-------------------|
-| Risk Disclosure | SEC Reg S-K Items 103, 105; ASC 205-40 | Material weakness in internal controls |
-| Financial Reporting | SEC Form 8-K Item 4.02; ASC 360-10, ASC 850 | Restatement of financial results |
-| Regulatory Compliance | FCPA, OFAC, GDPR, CCPA | Sanctions/embargo references |
-| Market Risk | Basel III, SEC Reg S-K Item 305, CCAR | Counterparty credit risk exposure |
-
-Each finding is severity-classified (Critical → Low) with a regulatory reference and an excerpt showing the matched text in context.
+![NEXUS Dashboard](public/dashboard-preview.png)
 
 ---
 
 ## Features
 
-### Intelligent Query Engine
-- Natural language questions across all uploaded documents
-- Real-time agent execution trace — watch each pipeline step complete
-- Citation-grounded responses with source chunk tracking
-- Confidence scoring and end-to-end pipeline latency metrics
+### RAG Pipeline
 
-### Regulatory Compliance Scanner
-- 30+ compliance pattern detectors across 6 regulatory frameworks
-- Severity classification: Critical / High / Medium / Low
-- Four scan categories: Risk Disclosure, Financial Reporting, Regulatory Compliance, Market Risk
-- Regulatory references included with every finding (e.g., "SOX Section 404", "FCPA")
+- **4-agent architecture** — Ingestion, Retrieval, Reasoning, and Synthesis agents with defined input/output contracts
+- **Section-aware chunking** — Splits on SEC filing boundaries (`ITEM 1A`, `PART II`), paragraph breaks, and sentence boundaries with 80-word context overlap
+- **TF-IDF retrieval** with finance-specific section-heading bonus (1.5x multiplier) and stop-word filtering
+- **Embedding support** — Gemini Embedding 2 (up to 3072 dimensions, adjustable output, task-type optimization)
+- **Compliance scanner** — 30+ pattern detectors across SEC Reg S-K, SOX, FCPA, OFAC, GDPR, Basel III, and ASC standards
+- **Real-time agent trace** — Watch each pipeline step execute with timing and output details
+- **Citation-grounded responses** — Every factual claim tagged with `[Source X]` notation mapping to specific chunks
 
-### Financial Document Intelligence
-- Upload 10-K filings, earnings reports, risk assessments via browser
-- Semantic chunking with section-aware boundary detection
-- Multi-document cross-referencing in a single query
-- Document management with chunk-level tracking
+### Financial Tools
 
-### Zero-Infrastructure Deployment
-- No database server — client-side persistence via localStorage
-- Vercel-deployable on the free tier
-- Google Colab compatible — complete Python notebook included
-- Free-tier LLM: Google Gemini 2.0 Flash API (no cost at typical usage levels)
+- **Accounting** — Double-entry journal system, natural language entry parsing, trial balance generation, issue detection, offline analysis with health scoring
+- **Tax** — Income tax calculator (Old/New regime comparison), GST computation (CGST/SGST/IGST), TDS reference tables, offline tax guidance with deduction checklists
+- **Analysis** — Financial ratio calculator (liquidity, profitability, leverage, efficiency, market), benchmark comparison, offline SWOT generation from computed ratios, RAG-powered document analysis
+
+### AI Integration
+
+- **Gemini model family** — 2.0 Flash (recommended default), 1.5 Flash, 1.5 Pro, 2.5 Flash/Pro (preview), Gemma 3 variants
+- **Automatic fallback chains** — If the selected model is unavailable (400/403/404), the system tries fallback models in sequence before returning an error
+- **Thinking mode support** — Gemini 2.5 models' thought channel is handled transparently
+- **Offline mode** — All financial tools work without an API key using local computation and rule-based analysis
+
+### Deployment
+
+- **Vercel-ready** — Deploys on the free tier with zero configuration
+- **localStorage-first** — No database server required for typical use; data persists across sessions in the browser
+- **Free-tier operation** — Gemini 2.0 Flash + Vercel free tier + localStorage = $0/month
+- **Google Colab notebook** — Complete Python pipeline for zero-install execution
+
+---
+
+## Architecture
+
+```
+                         NEXUS AGENTIC PIPELINE
+
+ ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+ │  INGESTION   │────>│  RETRIEVAL   │────>│  REASONING   │────>│  SYNTHESIS   │
+ │   AGENT      │     │   AGENT      │     │   AGENT      │     │   AGENT      │
+ ├─────────────┤     ├─────────────┤     ├─────────────┤     ├─────────────┤
+ │ Section      │     │ TF-IDF       │     │ Top-K        │     │ Gemini LLM   │
+ │ Boundary     │     │ Scoring      │     │ Selection    │     │              │
+ │ Detection    │     │              │     │              │     │ Citation     │
+ │ Semantic     │     │ Section      │     │ Confidence   │     │ Grounded     │
+ │ Chunking     │     │ Heading      │     │ Scoring      │     │ Analysis     │
+ │              │     │ Bonus        │     │              │     │              │
+ │ Context      │     │ Stop-Word    │     │ Relevance    │     │ Structured   │
+ │ Overlap      │     │ Filtering    │     │ Ranking      │     │ Output       │
+ └─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+       │                    │                    │                    │
+  Raw Document          Scored              Top-K Chunks       Citation-
+  → Chunks              Chunks             + Confidence        Grounded
+                                           Score              Response
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  COMPLIANCE SCANNER (Parallel Agent)                                     │
+ │                                                                          │
+ │  Pattern matching: SEC Reg S-K │ SOX §404 │ FCPA │ OFAC │ GDPR │ ASC    │
+ │  Output: Severity-classified findings (Critical / High / Medium / Low)   │
+ └──────────────────────────────────────────────────────────────────────────┘
+```
+
+The pipeline is designed for observability. When a query returns a poor result, the agent trace shows exactly which stage failed — was the chunking wrong, the retrieval weak, the ranking off, or the synthesis hallucinating? Each agent has a single responsibility and a defined input/output contract.
 
 ---
 
 ## Tech Stack
 
-| Component | Technology | Rationale |
-|-----------|-----------|-----------|
-| Framework | Next.js 16 | Server-side rendering, API routes, React Server Components |
-| Language | TypeScript | Type safety across the agent pipeline contracts |
-| Styling | Tailwind CSS 4 + shadcn/ui | Professional, accessible, production-quality components |
-| LLM | Google Gemini 2.0 Flash | Free-tier, low-latency, strong instruction following |
-| Charts | Recharts | React-native charting for analytics dashboards |
-| Animations | Framer Motion | Smooth, professional transitions |
-| Deployment | Vercel | Zero-config deploy, free tier, edge-optimized |
-| Python | Google Colab | Zero-install pipeline execution in notebook environment |
-
-**Cost-performance architecture:** Every component in this stack operates on a free tier. The entire system — from ingestion to LLM synthesis — runs at **$0 operational cost** for typical academic and portfolio use cases. This wasn't an afterthought; it was a core design constraint from day one.
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Framework | Next.js 16 (App Router) | Server rendering, API routes, React Server Components |
+| Language | TypeScript 5 | Type safety across agent pipeline contracts |
+| Styling | Tailwind CSS 4 + shadcn/ui | Production-quality, accessible components |
+| LLM | Google Gemini 2.0 Flash | Default generation model — free tier, low latency |
+| Embeddings | Gemini Embedding 2 | 3072-dim vectors, adjustable output, task-type support |
+| Charts | Recharts | Analytics dashboards |
+| Animations | Framer Motion | Transitions and motion |
+| State | Zustand + TanStack Query | Client and server state management |
+| Database | Prisma (SQLite) | Server-side document and chunk persistence |
+| Deployment | Vercel | Zero-config deploy, free tier |
+| Python | Google Colab | Zero-install pipeline execution |
 
 ---
 
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ or [Bun](https://bun.sh/)
-- A free [Google Gemini API key](https://aistudio.google.com/apikey)
+
+- **Node.js 18+** or [Bun](https://bun.sh/)
+- **A free [Google Gemini API key](https://aistudio.google.com/apikey)** (optional — offline mode works without one)
 
 ### Installation
 
@@ -219,121 +134,383 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The platform auto-seeds with 3 sample financial documents on first load — you can start querying immediately in Demo Mode.
+Open `http://localhost:3000`. The platform auto-seeds with 3 sample financial documents on first load — you can start querying immediately in Demo mode.
 
-To analyze your own documents, switch to Test Mode and upload directly through the browser. All data persists in localStorage — no configuration needed.
+To analyze your own documents, switch to Test mode and upload files directly through the browser. Supported formats: `.txt`, `.md`, `.pdf`, `.docx`.
 
 ### Environment Setup
 
-Create a `.env.local` file with your Gemini API key:
+Create a `.env.local` file in the project root:
 
 ```env
-GEMINI_API_KEY=your_free_api_key_here
+GEMINI_API_KEY=your_api_key_here
+DATABASE_URL="file:./dev.db"
 ```
 
-Get a free key at [Google AI Studio](https://aistudio.google.com/apikey) — no credit card required.
+Get a free Gemini API key at [Google AI Studio](https://aistudio.google.com/apikey) — no credit card required. The API key is also configurable from the Settings tab inside the app, so the `.env.local` file is optional.
 
 ---
 
-## Google Colab
+## Configuration
 
-Can't run Node.js locally? The complete agentic pipeline runs in a **Google Colab notebook** — zero installation, free GPU runtime.
+### Model Selection
 
-### Quick Start
+Configure models from the **Settings** tab. Defaults:
 
-1. Open [Google Colab](https://colab.research.google.com/)
-2. Download the notebook from the app's "Colab" tab, or grab `nexus_agentic_rag_colab.py` from this repo
-3. Run each cell sequentially
-4. Paste your own financial document text and query it
+| Setting | Default | Options |
+|---------|---------|---------|
+| Generation model | `gemini-2.0-flash` | Gemini 2.0 Flash, 2.0 Flash Lite, 1.5 Flash, 1.5 Pro, 2.5 Flash/Pro (preview), Gemma 3 (27B/12B/4B) |
+| Embedding model | `gemini-embedding-2` | Gemini Embedding 2, Embedding Exp 03-07, text-embedding-004 |
+| Embedding dimensions | 768 | 128–3072 (Gemini Embedding 2 only) |
+| Embedding task type | `RETRIEVAL_DOCUMENT` | `RETRIEVAL_QUERY`, `RETRIEVAL_DOCUMENT`, `SEMANTIC_SIMILARITY`, `CLASSIFICATION`, `CLUSTERING` |
 
-### What You Get in Colab
+### Pipeline Parameters
 
-| Feature | Colab Version | Web App Version |
-|---------|--------------|-----------------|
-| Semantic Chunking | ✅ | ✅ |
-| TF-IDF Retrieval | ✅ | ✅ |
-| LLM Synthesis (Gemini) | ✅ | ✅ |
-| Compliance Scanner | ✅ | ✅ |
-| Browser UI | ❌ (notebook interface) | ✅ |
-| Document Upload | 📎 From Google Drive | 📤 Browser upload |
-| Cost | Free | Free |
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Chunk size | 800 | Maximum words per chunk |
+| Chunk overlap | 120 | Overlap words between adjacent chunks |
+| Top-K | 8 | Number of chunks passed to the LLM |
+| Use embeddings | true | Enable vector search alongside TF-IDF |
+| Simulation mode | false | Skip LLM calls, return retrieval-only results |
 
----
+### Fallback Chains
 
-## My Role
+When a model returns 400/403/404 (unavailable in region, deprecated, etc.), the system automatically tries fallback models:
 
-I'm a **BBA Finance student** who designed and built NEXUS to prove a point: you don't need a $200K enterprise contract to do intelligent financial document analysis. You need the right architecture.
+```
+gemini-2.5-pro-preview  →  gemini-2.5-flash-preview  →  gemini-2.0-flash  →  gemini-1.5-flash
+gemini-2.5-flash-preview  →  gemini-2.0-flash  →  gemini-1.5-flash
+gemini-2.0-flash  →  gemini-1.5-flash  →  gemini-2.0-flash-lite
+gemini-1.5-pro  →  gemini-1.5-flash  →  gemini-2.0-flash
+gemma-3-*  →  gemini-2.0-flash  →  gemini-1.5-flash
+```
 
-### Agentic Workflow Design & Architecture Decisions
-
-The core intellectual contribution of this project is the **4-agent pipeline decomposition**. I didn't start by choosing technologies — I started by studying how financial analysts actually work:
-
-1. **Read** the document, noting sections and structure → *Ingestion Agent*
-2. **Find** the passages relevant to the question → *Retrieval Agent*
-3. **Evaluate** which evidence is strongest → *Reasoning Agent*
-4. **Write** a structured analysis citing sources → *Synthesis Agent*
-
-Each agent has a single responsibility, a defined input/output contract, and operates independently. This separation isn't just clean software design — it's **observable**. When a query returns a poor result, the agent trace tells you exactly which stage failed: was the chunking wrong, the retrieval weak, the ranking off, or the synthesis hallucinating? You can't debug what you can't see.
-
-### ML/AI Application in the Finance Domain
-
-Every design choice in this system is grounded in domain knowledge, not generic ML patterns:
-
-- **Section-heading bonus in retrieval** exists because I've read enough 10-Ks to know that `ITEM 1A. RISK FACTORS` is the single most informative string in the entire filing — it should be weighted accordingly
-- **Context overlap at chunk boundaries** exists because risk factor discussions in SEC filings routinely span paragraph breaks; losing the connecting context between Chunk N and Chunk N+1 would destroy the meaning
-- **Compliance scanner categories** map directly to the regulatory frameworks covered in my coursework: SOX Section 404 (internal controls), FCPA (anti-corruption), OFAC (sanctions), Basel III (capital adequacy), GDPR/CCPA (data privacy), SEC Regulation S-K (disclosure requirements)
-- **Confidence scoring is intentionally conservative** — `max(0.1)` floor and `min(0.99)` cap — because false precision in financial analysis is worse than admitted uncertainty
-
-### Business Analysis → Technical Capability Translation
-
-This project required translating business requirements into system behavior:
-
-| Business Requirement | Technical Implementation |
-|---------------------|------------------------|
-| "Analysts need to find risk factors fast" | Section-aware retrieval with heading bonus |
-| "We can't trust AI that makes things up" | Citation-grounded synthesis with source-only constraint |
-| "Compliance gaps get us fined" | Parallel compliance scanner with severity classification |
-| "Our team isn't technical" | Browser-based UI, zero-config deployment, Colab notebook |
-| "We can't justify a $100K tool" | Free-tier stack: Gemini + Vercel + localStorage |
-
-The compliance scanner is a direct translation of something I observed in my internship: compliance officers manually searching PDFs for keywords like "material weakness" and "related party transaction." That's a pattern-matching problem. It shouldn't require a human reading at 2 AM.
-
-### Cost-Performance Optimization Strategy
-
-This is where my finance background directly influenced the architecture:
-
-- **TF-IDF over embedding models:** For a portfolio project running on free infrastructure, a statistical scoring algorithm that runs in milliseconds with zero model downloads outperforms a 384-dimensional embedding model that requires GPU inference — especially when the document corpus is small (tens of documents, not millions). The retrieval quality is "good enough for the use case" at a fraction of the computational cost.
-
-- **Client-side storage over database servers:** localStorage isn't architecturally elegant, but it's **zero-cost and zero-config**. For the target user (a student, analyst, or small team testing the concept), the trade-off is correct: sacrifice multi-user concurrency for zero operational overhead.
-
-- **Gemini 2.0 Flash over larger models:** Flash is optimized for latency, not depth. For structured extraction tasks (find the number, cite the source, flag the risk), that's the right trade. You don't need GPT-4-level reasoning to extract "revenue was $96.8 billion" from a 10-K and cite it.
-
-- **Pre-filtering before LLM:** The three agents before Synthesis exist to minimize the LLM's input context. Smaller context → faster response → lower API cost → more queries on the free tier. This is cost engineering, not just software engineering.
-
-The total operational cost of this system is **$0/month** at typical usage levels. That's not an accident — it's the design constraint that shaped every architectural decision.
+The response includes `X-Model-Used` and `X-Model-Fallback` headers so the UI can indicate when a fallback was used.
 
 ---
 
-## Use Cases
+## Module Documentation
 
-### Earnings Analysis
-Upload quarterly earnings transcripts and ask: *"What was the revenue growth and forward guidance?"* — get a structured answer citing specific numbers from the filing.
+### Dashboard
 
-### Risk Assessment
-Upload a 10-K and ask: *"What are the key risk factors?"* — the compliance scanner automatically flags material weaknesses, going concern issues, and regulatory proceedings.
+Overview of pipeline activity: query history, document stats, compliance findings summary, and performance metrics (average retrieval/synthesis latency, confidence scores).
 
-### Regulatory Compliance
-Upload multiple filings and run the compliance scanner — it identifies potential violations across SOX, FCPA, OFAC, and SEC regulations with severity ratings and regulatory references.
+### Documents
 
-### Portfolio Due Diligence
-Upload investment documents and ask: *"What is the credit risk exposure?"* — cross-reference risk disclosures across multiple companies in a single query.
+Upload, manage, and inspect financial documents. Each document is automatically chunked and indexed. Shows chunk count, word count, section structure, and processing status.
+
+### Query
+
+The core RAG interface. Enter a natural language question, select target documents, and watch the four-agent pipeline execute in real time. Results include the synthesized answer, cited source chunks with relevance scores, and end-to-end latency metrics.
+
+### Accounting
+
+Double-entry bookkeeping with journal entry creation (manual or natural language parsing), trial balance generation, issue detection (unbalanced entries, missing narrations, unusual amounts), and AI-powered or offline analysis.
+
+### Tax
+
+Income tax calculator with Old vs. New regime comparison, GST computation (CGST/SGST/IGST with inclusive/exclusive options), TDS reference tables, and an AI tax assistant that works offline with pre-built deduction checklists and regime guidance.
+
+### Analysis
+
+Financial ratio calculator covering liquidity, profitability, leverage, efficiency, and market ratios. Includes benchmark comparison, RAG-powered analysis that pulls financial figures from uploaded documents, and offline SWOT generation based on computed ratios.
+
+### Colab
+
+Download a pre-built Google Colab notebook (`nexus_agentic_rag_colab.py`) that runs the same agentic pipeline in Python. Zero installation — paste your document text and query it using Gemini 2.0 Flash.
+
+### Settings
+
+Configure API key, generation/embedding models, pipeline parameters (chunk size, overlap, Top-K), and manage stored data (clear documents, reset configuration).
+
+---
+
+## Vercel Deployment
+
+### Step 1: Fork or Clone
+
+```bash
+# Option A: Fork on GitHub, then clone your fork
+git clone https://github.com/YOUR_USERNAME/RAG-PROJECT.git
+
+# Option B: Clone directly and push to your own repo
+git clone https://github.com/mellowedbo/RAG-PROJECT.git
+cd RAG-PROJECT
+git remote set-url origin https://github.com/YOUR_USERNAME/YOUR_REPO.git
+git push -u origin main
+```
+
+### Step 2: Connect to Vercel
+
+1. Go to [vercel.com](https://vercel.com) and sign in with your GitHub account
+2. Click **"Add New..."** → **"Project"**
+3. Select your repository from the list
+4. Vercel auto-detects the Next.js framework — no configuration needed
+
+### Step 3: Set Environment Variables
+
+In the Vercel project settings, go to **Settings → Environment Variables** and add:
+
+| Variable | Value | Required |
+|----------|-------|----------|
+| `GEMINI_API_KEY` | Your Google Gemini API key | No (offline mode works without it) |
+| `DATABASE_URL` | `file:./dev.db` | No (defaults to SQLite) |
+
+To add variables:
+
+1. Navigate to **Settings → Environment Variables**
+2. Enter the variable name and value
+3. Select the environments: **Production**, **Preview**, and **Development**
+4. Click **Save**
+5. Redeploy for changes to take effect
+
+### Step 4: Deploy
+
+Click **Deploy**. Vercel runs `next build` and deploys the output. The first deploy typically takes 2–3 minutes.
+
+The included `vercel.json` configures:
+
+- Framework detection: `nextjs`
+- Build command: `next build`
+- Region: `sin1` (Singapore)
+- API route headers: `Cache-Control: no-store`
+
+### Step 5: Custom Domain (Optional)
+
+1. Go to **Settings → Domains**
+2. Add your domain (e.g., `nexus.yourdomain.com`)
+3. Configure DNS at your registrar:
+   - **A record**: `76.76.21.21` (Vercel's IP)
+   - **CNAME record**: `cname.vercel-dns.com` (for subdomains)
+4. Vercel provisions an SSL certificate automatically
+
+### Notes on Serverless Deployment
+
+- **Rate limiting** uses in-memory storage, which resets on serverless cold starts. This is acceptable for demo and low-traffic use.
+- **localStorage** is client-side only. On Vercel, documents uploaded in the app are persisted in the browser, not on the server. For server-side persistence, the app uses Prisma with SQLite — but note that SQLite on Vercel's ephemeral filesystem resets on each deployment.
+- For production multi-user scenarios, consider switching the Prisma provider to PostgreSQL (e.g., Vercel Postgres or Supabase) and updating `DATABASE_URL` accordingly.
+
+---
+
+## API Reference
+
+### Gemini Proxy
+
+```
+POST /api/gemini
+```
+
+Proxies requests to the Gemini API with fallback chain support.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `apiKey` | string | Gemini API key |
+| `mode` | `"generate" \| "embed"` | Operation mode |
+| `model` | string | Model ID (default: `gemini-2.0-flash`) |
+| `systemPrompt` | string | System instruction (generate mode) |
+| `userPrompt` | string | User message (generate mode) |
+| `texts` | string[] | Texts to embed (embed mode) |
+| `outputDimensionality` | number | Embedding dimensions, 128–3072 |
+| `taskType` | string | Embedding task type |
+
+Response headers: `X-Model-Used`, `X-Model-Fallback`, `X-RateLimit-Remaining`.
+
+### File Extraction
+
+```
+POST /api/extract
+```
+
+Extracts text from uploaded files. Accepts `multipart/form-data` with a `file` field. Supported formats: `.txt`, `.md`, `.pdf`, `.docx`.
+
+Returns: `{ text, filename, chars, words }`
+
+### Finance Query
+
+```
+POST /api/finance-query
+```
+
+Runs the full RAG pipeline against stored documents.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `query` | string | Natural language question |
+| `documentIds` | string[] | Target document IDs (optional, all if omitted) |
+| `domain` | string | Analysis domain (default: `"finance"`) |
+
+Returns: `{ response, agentTrace, metrics, citedChunks }`
+
+### Compliance Scan
+
+```
+POST /api/compliance-scan
+```
+
+Scans document chunks for regulatory compliance findings.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `documentIds` | string[] | Target document IDs (optional) |
+
+Returns: `{ findings, summary, stats, categories }`
+
+### Seed Database
+
+```
+POST /api/seed
+```
+
+Seeds the database with 3 sample financial documents (Tesla 10-K, Goldman Sachs earnings, JP Morgan risk assessment). Idempotent — returns a message if documents already exist.
+
+```
+DELETE /api/seed
+```
+
+Wipes all documents, chunks, and analysis sessions.
+
+### Documents
+
+```
+GET /api/documents/list
+```
+
+Lists all documents with stats (chunk counts, word counts, type breakdown).
+
+```
+DELETE /api/documents/delete?id=<document_id>
+```
+
+Deletes a document and its chunks.
+
+---
+
+## Offline Mode
+
+NEXUS is designed to be useful even without a Gemini API key. Here's what works offline:
+
+| Feature | Offline Behavior |
+|---------|-----------------|
+| Document upload & chunking | Full functionality |
+| TF-IDF retrieval | Full functionality |
+| Compliance scanner | Full functionality |
+| Query (retrieval only) | Returns top chunks with relevance scores, no LLM synthesis |
+| Accounting analysis | Rule-based health score, trial balance assessment, issue detection |
+| Tax assistant | Pre-built deduction checklists, regime comparison, GST/TDS reference tables |
+| Financial analysis | Rule-based SWOT from computed ratios, benchmark comparison |
+| Embedding search | Requires API key |
+
+When no API key is configured, the UI shows an "Offline" badge and buttons display context-appropriate labels (e.g., "Analyze (Offline)" instead of "Analyze with AI"). Adding a Gemini API key in Settings upgrades all tools to AI-powered mode.
+
+---
+
+## Project Structure
+
+```
+RAG-PROJECT/
+├── prisma/
+│   └── schema.prisma              # Database schema (Document, DocumentChunk, AnalysisSession)
+├── public/
+│   ├── logo.svg                   # NEXUS favicon
+│   ├── dashboard-preview.png      # Dashboard screenshot
+│   ├── hero-bg.png                # Landing background
+│   ├── network-bg.png             # Network visualization background
+│   └── downloads/
+│       └── nexus_agentic_rag_colab.py  # Colab notebook
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx             # Root layout, theme provider, metadata
+│   │   ├── page.tsx               # Main application page
+│   │   ├── globals.css            # Global styles
+│   │   └── api/
+│   │       ├── route.ts           # Health check
+│   │       ├── gemini/route.ts    # Gemini proxy with fallback chain
+│   │       ├── extract/route.ts   # File text extraction
+│   │       ├── finance-query/route.ts  # RAG pipeline endpoint
+│   │       ├── compliance-scan/route.ts # Compliance scanner
+│   │       ├── seed/route.ts      # Database seeding
+│   │       └── documents/
+│   │           ├── list/route.ts  # Document listing
+│   │           └── delete/route.ts # Document deletion
+│   ├── components/
+│   │   ├── DashboardView.tsx      # Dashboard tab
+│   │   ├── DocumentsView.tsx      # Document management tab
+│   │   ├── QueryView.tsx          # RAG query interface tab
+│   │   ├── AccountingView.tsx     # Accounting tools tab
+│   │   ├── TaxView.tsx            # Tax calculator tab
+│   │   ├── AnalysisView.tsx       # Financial analysis tab
+│   │   ├── ComplianceView.tsx     # Compliance findings tab
+│   │   ├── ColabView.tsx          # Colab notebook tab
+│   │   ├── SettingsView.tsx       # Configuration tab
+│   │   ├── Navigation.tsx         # Top nav bar with mode toggle
+│   │   ├── ErrorBoundary.tsx      # React error boundary
+│   │   └── ui/                    # shadcn/ui components
+│   ├── hooks/
+│   │   ├── useRAGPipeline.ts      # RAG pipeline orchestration hook
+│   │   ├── use-mobile.ts          # Mobile detection
+│   │   └── use-toast.ts           # Toast notifications
+│   ├── lib/
+│   │   ├── chunker.ts             # Text chunking (client-side)
+│   │   ├── retriever.ts           # TF-IDF retrieval engine
+│   │   ├── embeddings.ts          # Embedding generation
+│   │   ├── compliance.ts          # Compliance scanning (client-side)
+│   │   ├── storage.ts             # localStorage persistence layer
+│   │   ├── demoData.ts            # Sample document data
+│   │   ├── rateLimit.ts           # Server-side rate limiter
+│   │   ├── db.ts                  # Prisma client instance
+│   │   ├── utils.ts               # Utility functions
+│   │   ├── vectordb/
+│   │   │   ├── index.ts           # Vector DB interface
+│   │   │   └── memory.ts          # In-memory vector store
+│   │   └── rag/
+│   │       ├── chunker.ts         # Server-side chunking with relevance scoring
+│   │       └── compliance.ts      # Server-side compliance scanning
+│   └── types/
+│       └── index.ts               # Shared type definitions, model catalog, defaults
+├── nexus_core/                    # Python implementation (Colab)
+│   ├── __init__.py
+│   ├── chunker.py
+│   ├── retriever.py
+│   ├── embeddings.py
+│   ├── vectordb.py
+│   ├── compliance.py
+│   └── synthesizer.py
+├── vercel.json                    # Vercel deployment config
+├── package.json
+├── tailwind.config.ts
+├── tsconfig.json
+└── next.config.ts
+```
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make changes and commit: `git commit -m "Add your feature"`
+4. Push to your fork: `git push origin feature/your-feature`
+5. Open a pull request
+
+### Development
+
+```bash
+npm install          # Install dependencies
+npm run dev          # Start dev server on port 3000
+npm run lint         # Run ESLint
+npm run db:push      # Push Prisma schema changes
+```
+
+### Code Style
+
+- TypeScript throughout with strict typing
+- shadcn/ui components for UI — don't build from scratch
+- Follow the existing comment style (JSDoc for functions, `//` for inline notes)
+- Keep the agent pipeline architecture intact — each agent has a single responsibility
 
 ---
 
 ## License
 
-[MIT](LICENSE)
-
----
-
-*Built with Next.js, TypeScript, Tailwind CSS, shadcn/ui, Recharts, Framer Motion, and Google Gemini.*
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

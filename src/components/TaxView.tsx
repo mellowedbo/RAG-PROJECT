@@ -6,6 +6,7 @@ import {
   IndianRupee, Calculator, Receipt, Search, TrendingDown,
   ArrowRight, CheckCircle2, AlertCircle, Info, Sparkles,
   Send, Loader2, ChevronDown, ChevronUp, X, Key, MessageSquare,
+  Lightbulb,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,12 +38,10 @@ import {
 } from '@/components/ui/tooltip';
 import type { IncomeTaxInput, IncomeTaxResult, TaxSlab, GSTInput, GSTResult, TaxRegime } from '@/types';
 
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — TaxView Component
-   Indian Tax Calculator (FY 2024-25), GST, TDS, AI Assistant
-   ═══════════════════════════════════════════════════════════ */
+// NEXUS — TaxView Component
+// Indian Tax Calculator (FY 2024-25), GST, TDS, AI Assistant
 
-/* ─── Utility: Indian Number Formatting ───────────────────── */
+// Utility: Indian Number Formatting
 function formatINR(amount: number): string {
   const isNegative = amount < 0;
   const abs = Math.abs(Math.round(amount));
@@ -70,7 +69,7 @@ function formatPercent(rate: number): string {
   return `${rate}%`;
 }
 
-/* ─── Income Tax Calculation Engine ──────────────────────── */
+// Income Tax Calculation Engine
 
 const OLD_REGIME_SLABS = [
   { range: 'Up to ₹2,50,000', rate: 0, taxableFrom: 0, taxableTo: 250000 },
@@ -247,7 +246,7 @@ function calculateSingleRegime(input: IncomeTaxInput & { regime: TaxRegime }): {
   return { totalTax: taxWithSurcharge + cess };
 }
 
-/* ─── GST Calculation Engine ─────────────────────────────── */
+// GST Calculation Engine
 
 function calculateGST(input: GSTInput): GSTResult {
   const { amount, gstRate, gstType, isInclusive } = input;
@@ -290,7 +289,7 @@ function calculateGST(input: GSTInput): GSTResult {
   }
 }
 
-/* ─── TDS Rate Data ──────────────────────────────────────── */
+// TDS Rate Data
 
 interface TDSRateEntry {
   section: string;
@@ -339,7 +338,7 @@ const GST_RATE_ITEMS: { rate: number; label: string; items: string[] }[] = [
   { rate: 28, label: '28% GST', items: ['Luxury cars', 'Motorcycles (>350cc)', 'Aerated drinks', 'Tobacco & cigarettes', 'Cement', 'Air conditioners', 'Dishwashers', '5-star hotel stays'] },
 ];
 
-/* ─── Component Props ────────────────────────────────────── */
+// Component Props
 
 interface TaxViewProps {
   apiKey: string;
@@ -356,7 +355,7 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-/* ─── Slab Breakdown Detail ──────────────────────────────── */
+// Slab Breakdown Detail
 
 interface SlabBreakdownDetail {
   range: string;
@@ -385,7 +384,7 @@ function getDetailedBreakdown(taxableIncome: number, regime: TaxRegime, age: num
   return result;
 }
 
-/* ═══════════════════════ TaxView Component ═══════════════════════ */
+// TaxView Component
 
 export default function TaxView({
   apiKey,
@@ -411,6 +410,14 @@ export default function TaxView({
                 <div className="text-xs text-muted-foreground">
                   Income Tax (Old & New Regime), GST Calculator, TDS Rate Lookup, and AI Tax Assistant — all calculations as per Indian tax law
                 </div>
+                {!apiKey && !simulationMode && (
+                  <div className="mt-1.5">
+                    <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/30 text-emerald-600">
+                      <Lightbulb className="w-2.5 h-2.5" />
+                      Works offline — add API key for AI insights
+                    </Badge>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -461,7 +468,7 @@ export default function TaxView({
   );
 }
 
-/* ═══════════════════════ Income Tax Tab ═══════════════════════ */
+// Income Tax Tab
 
 function IncomeTaxTab() {
   const [annualIncome, setAnnualIncome] = useState('1200000');
@@ -499,7 +506,7 @@ function IncomeTaxTab() {
       {/* Input Panel */}
       <div className="lg:col-span-2 space-y-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Calculator className="w-4 h-4 text-emerald-600" />
@@ -575,7 +582,7 @@ function IncomeTaxTab() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="space-y-3"
+                    className="space-y-3 overflow-y-auto max-h-[50vh]"
                   >
                     <div className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
                       <TrendingDown className="w-3 h-3" />
@@ -761,7 +768,9 @@ function IncomeTaxTab() {
                       exit={{ opacity: 0, height: 0 }}
                     >
                       <CardContent>
+                        <div className="overflow-x-auto">
                         <Table>
+
                           <TableHeader>
                             <TableRow>
                               <TableHead className="text-[10px]">Income Slab</TableHead>
@@ -773,7 +782,7 @@ function IncomeTaxTab() {
                           <TableBody>
                             {breakdown.map((slab, i) => (
                               <TableRow key={i}>
-                                <TableCell className="text-xs py-1.5">{slab.range}</TableCell>
+                                <TableCell className="text-xs py-1.5 break-words">{slab.range}</TableCell>
                                 <TableCell className="text-xs py-1.5 text-right font-mono">{slab.rate}%</TableCell>
                                 <TableCell className="text-xs py-1.5 text-right font-mono">{formatINR(slab.taxableAmount)}</TableCell>
                                 <TableCell className="text-xs py-1.5 text-right font-mono font-medium">{formatINR(slab.taxAmount)}</TableCell>
@@ -793,6 +802,7 @@ function IncomeTaxTab() {
                             </TableRow>
                           </TableBody>
                         </Table>
+                        </div>
                       </CardContent>
                     </motion.div>
                   )}
@@ -858,7 +868,7 @@ function IncomeTaxTab() {
   );
 }
 
-/* ═══════════════════════ GST Calculator Tab ═══════════════════════ */
+// GST Calculator Tab
 
 function GSTTab() {
   const [amount, setAmount] = useState('10000');
@@ -882,7 +892,7 @@ function GSTTab() {
       {/* Input Panel */}
       <div className="lg:col-span-2 space-y-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <Card>
+          <Card className="overflow-hidden">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-emerald-600" />
@@ -1075,7 +1085,7 @@ function GSTTab() {
               <CardDescription className="text-xs">Common items under each GST slab</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-2 overflow-hidden">
                 {GST_RATE_ITEMS.map((item) => (
                   <div key={item.rate} className="border rounded-lg overflow-hidden">
                     <button
@@ -1122,7 +1132,7 @@ function GSTTab() {
   );
 }
 
-/* ═══════════════════════ TDS Rates Tab ═══════════════════════ */
+// TDS Rates Tab
 
 function TDSTab() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -1200,9 +1210,10 @@ function TDSTab() {
 
       {/* Table */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-        <Card>
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[600px]">
+            <div className="overflow-x-auto">
+            <ScrollArea className="max-h-[50vh]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -1244,6 +1255,7 @@ function TDSTab() {
                 </TableBody>
               </Table>
             </ScrollArea>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
@@ -1263,7 +1275,7 @@ function TDSTab() {
   );
 }
 
-/* ═══════════════════════ AI Tax Assistant Tab ═══════════════════════ */
+// AI Tax Assistant Tab
 
 interface AIAssistantTabProps {
   apiKey: string;
@@ -1349,11 +1361,10 @@ RULES:
         const assistantMessage: ChatMessage = { role: 'assistant', content: simResponse, timestamp: new Date() };
         setMessages(prev => [...prev, assistantMessage]);
       } else if (!apiKey) {
-        const assistantMessage: ChatMessage = {
-          role: 'assistant',
-          content: '⚠️ Please add your Gemini API key in the Settings tab to use the AI Tax Assistant. Without it, I can only provide simulation responses.\n\nYou can also use the Income Tax, GST, and TDS calculators above — they work without an API key!',
-          timestamp: new Date(),
-        };
+        // Offline: provide rule-based response from the question
+        await new Promise(resolve => setTimeout(resolve, 800));
+        const offlineResponse = generateOfflineTaxResponse(q);
+        const assistantMessage: ChatMessage = { role: 'assistant', content: offlineResponse, timestamp: new Date() };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
         const res = await fetch('/api/gemini', {
@@ -1428,8 +1439,8 @@ RULES:
             <CardContent className="flex-1 flex flex-col">
               {!apiKey && !simulationMode && (
                 <div className="text-xs text-amber-600 flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-500/20 mb-3">
-                  <Key className="w-3.5 h-3.5 shrink-0" />
-                  Add your Gemini API key in Settings for live AI responses. Calculators work without it.
+                  <Lightbulb className="w-3.5 h-3.5 shrink-0" />
+                  Calculators and rule-based tax advice work without an API key. Add a Gemini key for personalized AI insights.
                 </div>
               )}
 
@@ -1440,6 +1451,25 @@ RULES:
                     <Sparkles className="w-10 h-10 mb-3 opacity-20" />
                     <p className="text-sm font-medium">Ask me anything about Indian taxation</p>
                     <p className="text-xs mt-1 opacity-70">Income Tax, GST, TDS — powered by your financial documents</p>
+                    {!apiKey && !simulationMode && (
+                      <div className="mt-4 space-y-3">
+                        <div className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">Quick Tax Reference (Offline)</div>
+                        <div className="grid grid-cols-1 gap-2 text-left max-h-[200px] overflow-y-auto">
+                          <div className="p-2 rounded border border-border bg-muted/30">
+                            <div className="text-[11px] font-medium">💡 Tax Saving Tips</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">Max out 80C (₹1.5L), add 80D health insurance, use NPS u/s 80CCD(1B) for extra ₹50K</div>
+                          </div>
+                          <div className="p-2 rounded border border-border bg-muted/30">
+                            <div className="text-[11px] font-medium">⚖️ Regime Comparison</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">New regime: lower rates, no deductions. Old regime: higher rates but 80C+80D+HRA can save more</div>
+                          </div>
+                          <div className="p-2 rounded border border-border bg-muted/30">
+                            <div className="text-[11px] font-medium">📋 Old Regime Deductions Checklist</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">80C: PPF/ELSS/LIC, 80D: Health Ins, 80E: Education loan, 80G: Donations, 24(b): Home loan interest</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1455,7 +1485,7 @@ RULES:
                         ? 'bg-emerald-600 text-white rounded-br-none'
                         : 'bg-muted border border-border rounded-bl-none'
                     }`}>
-                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                      <div className="whitespace-pre-wrap break-words [overflow-wrap:break-word]">{msg.content}</div>
                       <div className={`text-[9px] mt-1 ${msg.role === 'user' ? 'text-emerald-200' : 'text-muted-foreground'}`}>
                         {msg.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </div>
@@ -1540,7 +1570,7 @@ RULES:
               </div>
               <Separator />
               <div className="text-[10px] text-muted-foreground">
-                <p>Powered by {simulationMode ? 'Simulation Mode' : generationModel || 'Gemma 4 31B IT'}</p>
+                <p>Powered by {simulationMode ? 'Simulation Mode' : generationModel || 'Gemini AI'}</p>
                 <p className="mt-1 text-amber-600">⚠️ AI responses are for guidance only. Consult a CA for official tax advice.</p>
               </div>
             </CardContent>
@@ -1551,7 +1581,89 @@ RULES:
   );
 }
 
-/* ─── Simulation Response Generator ──────────────────────── */
+// Offline Tax Response Generator
+
+function generateOfflineTaxResponse(question: string): string {
+  const q = question.toLowerCase();
+
+  // Reuse the simulation response for known topics, but add an offline note
+  const baseResponse = generateSimulationResponse(question);
+
+  // For unrecognized questions, provide generic offline help
+  if (baseResponse.includes('I understand your question about:')) {
+    // Provide structured offline guidance instead
+    let response = `📝 **Offline Tax Guidance**\n\n`;
+    response += `I can help with the following without an API key:\n\n`;
+
+    if (q.includes('save') || q.includes('saving') || q.includes('reduce') || q.includes('minimize')) {
+      response += `💡 **Tax Saving Tips (FY 2024-25):**\n\n`;
+      response += `**Old Regime (with deductions):**\n`;
+      response += `• Maximize 80C: ₹1,50,000 (PPF, ELSS, LIC, EPF, NSC, home loan principal)\n`;
+      response += `• Section 80D: ₹25,000 (₹50,000 for seniors) for health insurance\n`;
+      response += `• NPS u/s 80CCD(1B): Additional ₹50,000 deduction\n`;
+      response += `• HRA exemption if you're salaried and paying rent\n`;
+      response += `• Home loan interest u/s 24(b): Up to ₹2,00,000\n`;
+      response += `• 80E: Education loan interest (no limit)\n`;
+      response += `• 80TTA/80TTB: Savings/FD interest (₹10,000/₹50,000 for seniors)\n\n`;
+      response += `**New Regime:**\n`;
+      response += `• Only standard deduction of ₹50,000\n`;
+      response += `• No other deductions allowed\n`;
+      response += `• Best for those with minimal deductions\n`;
+    } else if (q.includes('regime') || q.includes('old') || q.includes('new') || q.includes('compare') || q.includes('better')) {
+      response += `⚖️ **Regime Comparison (FY 2024-25):**\n\n`;
+      response += `| Feature | Old Regime | New Regime |\n|---------|-----------|------------|\n`;
+      response += `| Basic Exemption | ₹2.5L (₹3L/₹5L senior) | ₹3L |\n`;
+      response += `| Deductions | 80C, 80D, HRA, etc. | Only ₹50K standard |\n`;
+      response += `| 87A Rebate | Taxable ≤ ₹5L → ₹12,500 | Taxable ≤ ₹7L → ₹25,000 |\n`;
+      response += `| Slabs | 0/5/20/30% | 0/5/10/15/20/30% |\n\n`;
+      response += `**Rule of thumb:** If total deductions > ₹2.5L, Old Regime likely saves more.\n`;
+      response += `Use the Income Tax Calculator above for an exact comparison!\n`;
+    } else if (q.includes('deduct') || q.includes('80c') || q.includes('80d') || q.includes('section')) {
+      response += `📋 **Common Deductions Checklist (Old Regime):**\n\n`;
+      response += `1. **80C (₹1.5L):** PPF, ELSS, LIC, EPF, NSC, 5-yr FD, home loan principal, tuition fees\n`;
+      response += `2. **80CCD(1B) (₹50K):** NPS contribution\n`;
+      response += `3. **80D (₹25K/₹50K):** Health insurance premium\n`;
+      response += `4. **80E:** Education loan interest (no limit)\n`;
+      response += `5. **80G:** Donations to approved charities (50%/100%)\n`;
+      response += `6. **80TTA (₹10K):** Savings account interest\n`;
+      response += `7. **80TTB (₹50K):** Senior citizen deposit interest\n`;
+      response += `8. **24(b) (₹2L):** Home loan interest\n`;
+      response += `9. **HRA:** House Rent Allowance exemption\n\n`;
+      response += `⚠️ These deductions are NOT available under the New Regime.\n`;
+    } else if (q.includes('gst')) {
+      response += `💰 **GST Rate Reference:**\n\n`;
+      response += `• **5%:** Essential food, medicines, textiles (<₹1K), transport\n`;
+      response += `• **12%:** Processed food, mobile phones, business class travel\n`;
+      response += `• **18%:** Most services (IT, banking, telecom), FMCG, electronics\n`;
+      response += `• **28%:** Luxury cars, tobacco, cement, ACs, 5-star hotels\n`;
+      response += `• **0% (Exempt):** Fresh produce, milk, bread, education, healthcare\n\n`;
+      response += `Use the GST Calculator tab for specific calculations.\n`;
+    } else if (q.includes('tds')) {
+      response += `📄 **Common TDS Rates:**\n\n`;
+      response += `• Salary (192): As per slab rates\n`;
+      response += `• Professional fees (194J): 10% (threshold ₹30K)\n`;
+      response += `• Contractor (194C): 1-2% (threshold ₹30K/₹1L)\n`;
+      response += `• Rent (194I): 2-10% (threshold ₹1.8L/₹2.4L)\n`;
+      response += `• Commission (194H): 5% (threshold ₹15K)\n`;
+      response += `• Interest on FD (194A): 10% (threshold ₹40K)\n\n`;
+      response += `Check the TDS Rates tab for the complete reference table.\n`;
+    } else {
+      response += `• **Income Tax:** Slabs, deductions, regime comparison\n`;
+      response += `• **GST:** Rates, calculations, CGST/SGST/IGST\n`;
+      response += `• **TDS:** Section-wise rates and thresholds\n`;
+      response += `• **Deductions:** 80C, 80D, HRA, home loan interest\n\n`;
+      response += `Try asking about: "tax saving tips", "regime comparison", "80C deductions", "GST rates", or "TDS on professional fees"\n\n`;
+      response += `💡 Use the Income Tax, GST, and TDS calculators for instant results!\n`;
+    }
+
+    response += `\n---\n*This is a rule-based response. Add a Gemini API key for personalized, contextual advice.*`;
+    return response;
+  }
+
+  return baseResponse + `\n\n---\n*This is a rule-based response. Add a Gemini API key for personalized, contextual advice.*`;
+}
+
+// Simulation Response Generator
 
 function generateSimulationResponse(question: string): string {
   const q = question.toLowerCase();

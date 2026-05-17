@@ -28,9 +28,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import type { FinancialRatio, AnalysisResult } from '@/types';
 
-/* ═══════════════════════════════════════════════════════════
-   Constants — Financial Data Input Fields
-   ═══════════════════════════════════════════════════════════ */
+// Constants — Financial Data Input Fields
 
 interface FinancialInputField {
   key: string;
@@ -60,9 +58,7 @@ const FINANCIAL_INPUTS: FinancialInputField[] = [
   { key: 'dividendsPerShare', label: 'Dividends Per Share', placeholder: 'e.g. 3.2', group: 'market' },
 ];
 
-/* ═══════════════════════════════════════════════════════════
-   Ratio Definitions & Benchmarks
-   ═══════════════════════════════════════════════════════════ */
+// Ratio Definitions & Benchmarks
 
 interface RatioDefinition {
   name: string;
@@ -75,7 +71,7 @@ interface RatioDefinition {
 }
 
 const RATIO_DEFINITIONS: RatioDefinition[] = [
-  // ── Liquidity ──────────────────────────────────────────
+  // Liquidity
   {
     name: 'Current Ratio',
     formula: 'Current Assets / Current Liabilities',
@@ -104,7 +100,7 @@ const RATIO_DEFINITIONS: RatioDefinition[] = [
     interpret: (v) => v >= 0.5 ? 'healthy' : v >= 0.2 ? 'warning' : 'danger',
   },
 
-  // ── Profitability ─────────────────────────────────────
+  // Profitability
   {
     name: 'Gross Profit Margin',
     formula: '(Revenue - COGS) / Revenue ≈ Net Income / Revenue (simplified)',
@@ -151,7 +147,7 @@ const RATIO_DEFINITIONS: RatioDefinition[] = [
     interpret: (v) => v >= 15 ? 'healthy' : v >= 7 ? 'warning' : 'danger',
   },
 
-  // ── Leverage ──────────────────────────────────────────
+  // Leverage
   {
     name: 'Debt-to-Equity Ratio',
     formula: 'Total Liabilities / Shareholders\' Equity',
@@ -189,7 +185,7 @@ const RATIO_DEFINITIONS: RatioDefinition[] = [
     interpret: (v) => v <= 2 ? 'healthy' : v <= 3 ? 'warning' : 'danger',
   },
 
-  // ── Efficiency ────────────────────────────────────────
+  // Efficiency
   {
     name: 'Asset Turnover',
     formula: 'Revenue / Total Assets',
@@ -227,7 +223,7 @@ const RATIO_DEFINITIONS: RatioDefinition[] = [
     interpret: (v) => v >= 5 ? 'healthy' : v >= 2.5 ? 'warning' : 'danger',
   },
 
-  // ── Market ────────────────────────────────────────────
+  // Market
   {
     name: 'P/E Ratio',
     formula: 'Market Price Per Share / EPS',
@@ -257,9 +253,7 @@ const RATIO_DEFINITIONS: RatioDefinition[] = [
   },
 ];
 
-/* ═══════════════════════════════════════════════════════════
-   Helper Functions
-   ═══════════════════════════════════════════════════════════ */
+// Helper Functions
 
 function formatNumber(value: number, unit: FinancialRatio['unit']): string {
   if (unit === 'percent') {
@@ -333,9 +327,7 @@ const CATEGORY_LABELS: Record<FinancialRatio['category'], string> = {
   market: 'Market',
 };
 
-/* ═══════════════════════════════════════════════════════════
-   Component Props
-   ═══════════════════════════════════════════════════════════ */
+// Component Props
 
 interface AnalysisViewProps {
   apiKey: string;
@@ -347,9 +339,7 @@ interface AnalysisViewProps {
   setIsProcessing: (v: boolean) => void;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   AnalysisView Component
-   ═══════════════════════════════════════════════════════════ */
+// AnalysisView Component
 
 export default function AnalysisView({
   apiKey,
@@ -361,10 +351,10 @@ export default function AnalysisView({
   setIsProcessing,
 }: AnalysisViewProps) {
 
-  /* ─── State: Financial Inputs ─────────────────────────── */
+  // State: Financial Inputs
   const [financialData, setFinancialData] = useState<Record<string, string>>({});
 
-  /* ─── State: Balance Sheet ────────────────────────────── */
+  // State: Balance Sheet
   const [balanceSheetText, setBalanceSheetText] = useState('');
   const [balanceSheetAnalysis, setBalanceSheetAnalysis] = useState<{
     totalAssets: number;
@@ -387,16 +377,16 @@ export default function AnalysisView({
   } | null>(null);
   const [isParsingBS, setIsParsingBS] = useState(false);
 
-  /* ─── State: AI Analysis ──────────────────────────────── */
+  // State: AI Analysis
   const [aiAnalysis, setAiAnalysis] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ragAnalysis, setRagAnalysis] = useState('');
   const [isRagAnalyzing, setIsRagAnalyzing] = useState(false);
 
-  /* ─── State: Active Tab ──────────────────────────────── */
+  // State: Active Tab
   const [activeTab, setActiveTab] = useState('calculator');
 
-  /* ─── Computed: Calculate All Ratios ──────────────────── */
+  // Computed: Calculate All Ratios
   const calculatedRatios = useMemo(() => {
     const numericData: Record<string, number> = {};
     for (const [key, val] of Object.entries(financialData)) {
@@ -427,7 +417,7 @@ export default function AnalysisView({
     return ratios;
   }, [financialData]);
 
-  /* ─── Computed: Ratio Stats ──────────────────────────── */
+  // Computed: Ratio Stats
   const ratioStats = useMemo(() => {
     const healthy = calculatedRatios.filter(r => r.interpretation === 'Healthy').length;
     const warning = calculatedRatios.filter(r => r.interpretation === 'Warning').length;
@@ -435,12 +425,123 @@ export default function AnalysisView({
     return { healthy, warning, danger, total: calculatedRatios.length };
   }, [calculatedRatios]);
 
-  /* ─── Handler: Update Financial Input ─────────────────── */
+  // Handler: Update Financial Input
   const updateInput = useCallback((key: string, value: string) => {
     setFinancialData(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  /* ─── Handler: Parse Balance Sheet via AI ─────────────── */
+  // Offline SWOT Generation
+  const generateOfflineSWOT = useCallback((): string => {
+    if (calculatedRatios.length === 0) return 'No ratios calculated.';
+
+    const healthyRatios = calculatedRatios.filter(r => r.interpretation === 'Healthy');
+    const warningRatios = calculatedRatios.filter(r => r.interpretation === 'Warning');
+    const dangerRatios = calculatedRatios.filter(r => r.interpretation === 'Danger');
+
+    // Health score based on ratio distribution
+    const totalRatios = calculatedRatios.length;
+    const healthScore = Math.round(
+      (healthyRatios.length * 100 + warningRatios.length * 50 + dangerRatios.length * 0) / totalRatios
+    );
+
+    let md = `## 💪 SWOT Financial Analysis (Rule-Based)\n\n`;
+    md += `> **Overall Score: ${healthScore}/100** — ${healthScore >= 70 ? '🟢 Strong' : healthScore >= 50 ? '🟡 Moderate' : '🔴 Weak'}\n\n`;
+
+    // Strengths
+    md += `### 💪 Strengths\n\n`;
+    if (healthyRatios.length === 0) {
+      md += `No ratios are currently in the "Healthy" range. Consider reviewing your financial inputs.\n\n`;
+    } else {
+      for (const r of healthyRatios) {
+        md += `- **${r.name}** (${r.category}): ${formatNumber(r.value, r.unit)} — Healthy ✅\n`;
+        // Add context
+        if (r.name === 'Current Ratio') md += `  → Good short-term liquidity, able to meet obligations\n`;
+        else if (r.name === 'Quick Ratio') md += `  → Strong acid-test, can cover liabilities without selling inventory\n`;
+        else if (r.name === 'Net Profit Margin') md += `  → Efficient cost management and pricing\n`;
+        else if (r.name === 'ROE') md += `  → Effective use of shareholder equity to generate profits\n`;
+        else if (r.name === 'ROA') md += `  → Efficient asset utilization\n`;
+        else if (r.name === 'Debt-to-Equity Ratio') md += `  → Conservative leverage, lower financial risk\n`;
+        else if (r.name === 'Interest Coverage Ratio') md += `  → Comfortable debt servicing capacity\n`;
+        else if (r.name === 'Asset Turnover') md += `  → Efficient revenue generation from assets\n`;
+        else if (r.name === 'P/E Ratio') md += `  → Reasonable market valuation\n`;
+      }
+      md += `\n`;
+    }
+
+    // Weaknesses
+    md += `### ⚠️ Weaknesses\n\n`;
+    if (dangerRatios.length === 0) {
+      md += `No ratios are in the "Danger" zone. Great financial health!\n\n`;
+    } else {
+      for (const r of dangerRatios) {
+        md += `- **${r.name}** (${r.category}): ${formatNumber(r.value, r.unit)} — Danger 🔴\n`;
+        if (r.name === 'Current Ratio') md += `  → May struggle to meet short-term obligations\n`;
+        else if (r.name === 'Quick Ratio') md += `  → Insufficient liquid assets for immediate liabilities\n`;
+        else if (r.name === 'Net Profit Margin') md += `  → Low profitability — review cost structure\n`;
+        else if (r.name === 'ROE') md += `  → Poor return on shareholder investment\n`;
+        else if (r.name === 'Debt-to-Equity Ratio') md += `  → High leverage, increased financial risk\n`;
+        else if (r.name === 'Interest Coverage Ratio') md += `  → Difficulty servicing debt obligations\n`;
+        else if (r.name === 'P/E Ratio') md += `  → Potentially overvalued or negative earnings\n`;
+      }
+      md += `\n`;
+    }
+    if (warningRatios.length > 0) {
+      md += `**Approaching concern:**\n`;
+      for (const r of warningRatios) {
+        md += `- **${r.name}**: ${formatNumber(r.value, r.unit)} — Warning 🟡\n`;
+      }
+      md += `\n`;
+    }
+
+    // Opportunities
+    md += `### 🔮 Opportunities\n\n`;
+    const highROE = calculatedRatios.find(r => r.name === 'ROE' && r.interpretation === 'Healthy');
+    const lowPE = calculatedRatios.find(r => r.name === 'P/E Ratio' && r.value > 0 && r.value < 15);
+    const lowDebt = calculatedRatios.find(r => r.name === 'Debt-to-Equity Ratio' && r.interpretation === 'Healthy');
+    const goodLiquidity = calculatedRatios.find(r => r.name === 'Current Ratio' && r.interpretation === 'Healthy');
+
+    if (highROE) md += `- High ROE (${formatNumber(highROE.value, highROE.unit)}) suggests potential for expansion — consider reinvesting profits\n`;
+    if (lowPE) md += `- Low P/E ratio (${formatNumber(lowPE.value, lowPE.unit)}) may indicate undervaluation — potential investment opportunity\n`;
+    if (lowDebt) md += `- Low debt-to-equity (${formatNumber(lowDebt.value, lowDebt.unit)}) — capacity to take on strategic debt for growth\n`;
+    if (goodLiquidity) md += `- Strong liquidity position — ability to capitalize on market opportunities\n`;
+    const goodTurnover = calculatedRatios.find(r => r.name === 'Asset Turnover' && r.interpretation === 'Healthy');
+    if (goodTurnover) md += `- Efficient asset utilization — can scale operations without proportional asset increase\n`;
+    if (!highROE && !lowPE && !lowDebt && !goodLiquidity && !goodTurnover) {
+      md += `- Focus on improving weak ratios first to unlock growth potential\n`;
+    }
+    md += `\n`;
+
+    // Threats
+    md += `### 🚩 Threats\n\n`;
+    const highDebt = calculatedRatios.find(r => r.name === 'Debt-to-Equity Ratio' && r.interpretation === 'Danger');
+    const lowCoverage = calculatedRatios.find(r => r.name === 'Interest Coverage Ratio' && r.interpretation === 'Danger');
+    const poorLiquidity = calculatedRatios.find(r => r.name === 'Current Ratio' && r.interpretation === 'Danger');
+    const lowMargin = calculatedRatios.find(r => r.name === 'Net Profit Margin' && r.interpretation === 'Danger');
+
+    if (highDebt) md += `- High leverage (${formatNumber(highDebt.value, highDebt.unit)}) — vulnerable to interest rate increases\n`;
+    if (lowCoverage) md += `- Low interest coverage (${formatNumber(lowCoverage.value, lowCoverage.unit)}) — risk of default on debt obligations\n`;
+    if (poorLiquidity) md += `- Poor liquidity — risk of cash flow crisis if revenue declines\n`;
+    if (lowMargin) md += `- Low profit margin (${formatNumber(lowMargin.value, lowMargin.unit)}) — limited buffer against cost increases\n`;
+    if (!highDebt && !lowCoverage && !poorLiquidity && !lowMargin) {
+      md += `- No critical threats identified — financial position appears stable\n`;
+    }
+    md += `\n`;
+
+    // Recommendations
+    md += `### 📋 Key Recommendations\n\n`;
+    const recs: string[] = [];
+    if (poorLiquidity) recs.push('Improve liquidity by negotiating longer payment terms or securing a credit line');
+    if (highDebt) recs.push('Reduce leverage through debt repayment or equity infusion');
+    if (lowMargin) recs.push('Review cost structure and pricing strategy to improve profitability');
+    if (lowCoverage) recs.push('Refinance debt at lower rates or increase operating income');
+    if (recs.length === 0) recs.push('Maintain current financial discipline and monitor key ratios regularly');
+    recs.forEach((r, i) => { md += `${i + 1}. ${r}\n`; });
+    md += `\n*This is a rule-based analysis. Add a Gemini API key for AI-powered insights with industry benchmarks.*\n`;
+
+    return md;
+  }, [calculatedRatios]);
+
+  // Handler: Parse Balance Sheet via AI
   const parseBalanceSheet = useCallback(async () => {
     if (!balanceSheetText.trim()) return;
 
@@ -489,7 +590,7 @@ Return ONLY a JSON object with these fields (use 0 if not found, no extra text, 
     }
   }, [balanceSheetText, apiKey, generationModel, simulationMode]);
 
-  /* ─── Local Balance Sheet Parsing Fallback ────────────── */
+  // Local Balance Sheet Parsing Fallback
   const tryParseBalanceSheetLocally = useCallback(() => {
     const text = balanceSheetText.toLowerCase();
     const extractNumber = (label: string): number => {
@@ -515,7 +616,7 @@ Return ONLY a JSON object with these fields (use 0 if not found, no extra text, 
     });
   }, [balanceSheetText]);
 
-  /* ─── Apply Balance Sheet Analysis ───────────────────── */
+  // Apply Balance Sheet Analysis
   const applyBalanceSheetAnalysis = useCallback((data: {
     totalAssets: number; totalLiabilities: number; totalEquity: number;
     currentAssets: number; fixedAssets: number;
@@ -553,33 +654,94 @@ Return ONLY a JSON object with these fields (use 0 if not found, no extra text, 
     });
   }, []);
 
-  /* ─── Handler: RAG Document Analysis ──────────────────── */
+  // Handler: RAG Document Analysis
   const handleRAGAnalysis = useCallback(async () => {
     if (chunks.length === 0) return;
-    if (!apiKey && !simulationMode) {
-      setRagAnalysis('⚠️ Please configure your Gemini API key in Settings to enable AI-powered document analysis.');
+
+    setIsRagAnalyzing(true);
+    setRagAnalysis('');
+
+    // Search chunks for financial data
+    const financialChunks = chunks.filter(c => {
+      const lower = c.content.toLowerCase();
+      return lower.includes('revenue') || lower.includes('income') || lower.includes('assets') ||
+             lower.includes('liabilities') || lower.includes('equity') || lower.includes('profit') ||
+             lower.includes('ebit') || lower.includes('cash') || lower.includes('debt') ||
+             lower.includes('ratio') || lower.includes('financial') || lower.includes('balance sheet');
+    }).slice(0, 10);
+
+    if (financialChunks.length === 0) {
+      setRagAnalysis('No financial data found in the uploaded documents. Try uploading financial statements, 10-K reports, or earnings releases.');
+      setIsRagAnalyzing(false);
       return;
     }
 
-    setIsRagAnalyzing(true);
-    setIsProcessing(true);
-    setRagAnalysis('');
+    // Offline mode: show matched document chunks
+    if (!apiKey && !simulationMode) {
+      const docNames = [...new Set(financialChunks.map(c => {
+        const doc = documents.find(d => d.id === c.documentId);
+        return doc?.title || 'Unknown';
+      }))];
 
-    try {
-      // Search chunks for financial data
-      const financialChunks = chunks.filter(c => {
-        const lower = c.content.toLowerCase();
-        return lower.includes('revenue') || lower.includes('income') || lower.includes('assets') ||
-               lower.includes('liabilities') || lower.includes('equity') || lower.includes('profit') ||
-               lower.includes('ebit') || lower.includes('cash') || lower.includes('debt') ||
-               lower.includes('ratio') || lower.includes('financial') || lower.includes('balance sheet');
-      }).slice(0, 10);
+      let md = `## 📄 Document Analysis (Offline)\n\n`;
+      md += `Found ${financialChunks.length} relevant chunks from ${docNames.length} document(s): **${docNames.join(', ')}**\n\n`;
 
-      if (financialChunks.length === 0) {
-        setRagAnalysis('No financial data found in the uploaded documents. Try uploading financial statements, 10-K reports, or earnings releases.');
-        return;
+      // Try to extract financial figures from chunks
+      const figurePatterns: { key: string; patterns: string[] }[] = [
+        { key: 'revenue', patterns: ['revenue', 'total revenue', 'net revenue', 'sales'] },
+        { key: 'netIncome', patterns: ['net income', 'net profit', 'net earnings'] },
+        { key: 'totalAssets', patterns: ['total assets'] },
+        { key: 'totalLiabilities', patterns: ['total liabilities', 'total debt'] },
+        { key: 'shareholdersEquity', patterns: ["shareholders' equity", 'total equity', 'stockholders equity'] },
+        { key: 'ebit', patterns: ['ebit', 'operating income', 'operating profit'] },
+        { key: 'cash', patterns: ['cash and cash equivalents', 'cash'] },
+        { key: 'currentAssets', patterns: ['current assets', 'total current assets'] },
+        { key: 'currentLiabilities', patterns: ['current liabilities', 'total current liabilities'] },
+        { key: 'eps', patterns: ['earnings per share', 'eps'] },
+      ];
+
+      const extractedFigures: Record<string, { value: string; source: string }> = {};
+      for (const fp of figurePatterns) {
+        for (const chunk of financialChunks) {
+          const lower = chunk.content.toLowerCase();
+          for (const pattern of fp.patterns) {
+            const regex = new RegExp(`${pattern}[^]*?([$₹]?[\\s]*([\\d,]+(?:\\.\\d+)?))`, 'i');
+            const match = lower.match(regex);
+            if (match && match[2]) {
+              const value = match[2].replace(/,/g, '');
+              if (parseFloat(value) > 0 && !extractedFigures[fp.key]) {
+                extractedFigures[fp.key] = { value, source: chunk.content.slice(0, 80) };
+              }
+            }
+          }
+        }
       }
 
+      if (Object.keys(extractedFigures).length > 0) {
+        md += `### 📊 Extracted Financial Figures\n\n`;
+        md += `| Metric | Value |\n|--------|-------|\n`;
+        for (const [key, data] of Object.entries(extractedFigures)) {
+          const label = FINANCIAL_INPUTS.find(f => f.key === key)?.label || key;
+          md += `| ${label} | ${data.value} |\n`;
+        }
+        md += `\n💡 Click **"Use Document Data"** below to auto-fill these values in the calculator.\n\n`;
+      }
+
+      md += `### 📄 Matched Document Excerpts\n\n`;
+      financialChunks.forEach((c, i) => {
+        md += `**Source ${i + 1}${c.section ? ` — ${c.section}` : ''}:**\n`;
+        md += `> ${c.content.slice(0, 300)}${c.content.length > 300 ? '...' : ''}\n\n`;
+      });
+
+      md += `\n*Add a Gemini API key for AI-powered analysis with ratio calculations and insights from these documents.*`;
+      setRagAnalysis(md);
+      setIsRagAnalyzing(false);
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
       const chunksContext = financialChunks.map((c, i) =>
         `[Chunk ${i + 1} | Section: ${c.section || 'General'}]\n${c.content}`
       ).join('\n\n---\n\n');
@@ -589,7 +751,7 @@ Return ONLY a JSON object with these fields (use 0 if not found, no extra text, 
         return doc?.title || 'Unknown';
       }))];
 
-      const systemPrompt = `You are NEXUS Financial AI, an expert financial analyst powered by Gemma 4. Analyze the provided financial document excerpts and extract key financial data.
+      const systemPrompt = `You are NEXUS Financial AI, an expert financial analyst powered by Gemini AI. Analyze the provided financial document excerpts and extract key financial data.
 
 Provide your analysis in this structured format:
 
@@ -644,14 +806,19 @@ ${chunksContext}`;
     }
   }, [chunks, documents, apiKey, generationModel, simulationMode, setIsProcessing]);
 
-  /* ─── Handler: AI Financial Advisor ───────────────────── */
+  // Handler: AI Financial Advisor
   const handleAIAdvisor = useCallback(async () => {
     if (calculatedRatios.length === 0) {
-      setAiAnalysis('⚠️ Please enter financial data and calculate ratios first, then request AI analysis.');
+      setAiAnalysis('⚠️ Please enter financial data and calculate ratios first, then request analysis.');
       return;
     }
     if (!apiKey && !simulationMode) {
-      setAiAnalysis('⚠️ Please configure your Gemini API key in Settings to enable AI financial advisory.');
+      // Generate offline SWOT analysis from computed ratios
+      setIsAnalyzing(true);
+      setAiAnalysis('');
+      await new Promise(r => setTimeout(r, 400));
+      setAiAnalysis(generateOfflineSWOT());
+      setIsAnalyzing(false);
       return;
     }
 
@@ -667,7 +834,7 @@ ${chunksContext}`;
       const sector = documents[0]?.sector || 'General';
       const docTitles = documents.map(d => d.title).join(', ') || 'No documents';
 
-      const systemPrompt = `You are NEXUS Financial Advisor AI, an expert financial analyst powered by Gemma 4. Based on the provided financial ratios, generate a comprehensive financial analysis.
+      const systemPrompt = `You are NEXUS Financial Advisor AI, an expert financial analyst powered by Gemini AI. Based on the provided financial ratios, generate a comprehensive financial analysis.
 
 Provide your analysis in EXACTLY this format:
 
@@ -742,7 +909,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
     }
   }, [calculatedRatios, ratioStats, documents, financialData, apiKey, generationModel, simulationMode, setIsProcessing]);
 
-  /* ─── Handler: Load Sample Data ──────────────────────── */
+  // Handler: Load Sample Data
   const loadSampleData = useCallback(() => {
     setFinancialData({
       revenue: '96800000',
@@ -763,7 +930,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
     });
   }, []);
 
-  /* ─── Handler: Clear All Data ────────────────────────── */
+  // Handler: Clear All Data
   const clearAllData = useCallback(() => {
     setFinancialData({});
     setBalanceSheetText('');
@@ -772,18 +939,67 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
     setRagAnalysis('');
   }, []);
 
-  /* ─── Handler: Use RAG data for calculator ───────────── */
+  // Handler: Use RAG data for calculator
   const applyRagToCalculator = useCallback(() => {
-    // This would extract data from RAG results — placeholder
-  }, []);
+    if (chunks.length === 0) return;
 
-  /* ═══════════════════════════════════════════════════════════
-     Render
-     ═══════════════════════════════════════════════════════════ */
+    // Search chunks for financial figures
+    const financialChunks = chunks.filter(c => {
+      const lower = c.content.toLowerCase();
+      return lower.includes('revenue') || lower.includes('income') || lower.includes('assets') ||
+             lower.includes('liabilities') || lower.includes('equity') || lower.includes('profit') ||
+             lower.includes('ebit') || lower.includes('cash') || lower.includes('debt') ||
+             lower.includes('financial') || lower.includes('balance sheet');
+    }).slice(0, 10);
+
+    if (financialChunks.length === 0) return;
+
+    const figurePatterns: { key: string; patterns: string[] }[] = [
+      { key: 'revenue', patterns: ['revenue', 'total revenue', 'net revenue', 'sales'] },
+      { key: 'netIncome', patterns: ['net income', 'net profit', 'net earnings'] },
+      { key: 'ebit', patterns: ['ebit', 'operating income', 'operating profit'] },
+      { key: 'interestExpense', patterns: ['interest expense', 'interest cost'] },
+      { key: 'totalAssets', patterns: ['total assets'] },
+      { key: 'totalLiabilities', patterns: ['total liabilities', 'total debt'] },
+      { key: 'currentAssets', patterns: ['current assets', 'total current assets'] },
+      { key: 'currentLiabilities', patterns: ['current liabilities', 'total current liabilities'] },
+      { key: 'inventory', patterns: ['inventory', 'total inventory', 'stock'] },
+      { key: 'shareholdersEquity', patterns: ["shareholders' equity", 'total equity', 'stockholders equity'] },
+      { key: 'cash', patterns: ['cash and cash equivalents', 'cash'] },
+      { key: 'accountsReceivable', patterns: ['accounts receivable', 'trade receivables'] },
+      { key: 'marketPricePerShare', patterns: ['market price per share', 'share price', 'stock price'] },
+      { key: 'eps', patterns: ['earnings per share', 'eps'] },
+      { key: 'dividendsPerShare', patterns: ['dividends per share', 'dividend per share'] },
+    ];
+
+    const newData: Record<string, string> = { ...financialData };
+    for (const fp of figurePatterns) {
+      if (newData[fp.key]) continue; // Don't overwrite existing data
+      for (const chunk of financialChunks) {
+        const lower = chunk.content.toLowerCase();
+        for (const pattern of fp.patterns) {
+          const regex = new RegExp(`${pattern}[^]*?([$₹]?[\\s]*([\\d,]+(?:\\.\\d+)?))`, 'i');
+          const match = lower.match(regex);
+          if (match && match[2]) {
+            const value = match[2].replace(/,/g, '');
+            if (parseFloat(value) > 0) {
+              newData[fp.key] = value;
+              break;
+            }
+          }
+        }
+        if (newData[fp.key]) break;
+      }
+    }
+
+    setFinancialData(newData);
+  }, [chunks, financialData]);
+
+  // Render
 
   return (
     <div className="space-y-6">
-      {/* ─── Header ───────────────────────────────────────── */}
+      {/* Header */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="border-emerald-600/20 bg-gradient-to-br from-emerald-50/50 to-transparent dark:from-emerald-950/20">
           <CardHeader>
@@ -796,6 +1012,12 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                 <CardDescription className="text-xs mt-1">
                   Ratio calculator, balance sheet analyzer &amp; AI-powered financial intelligence
                 </CardDescription>
+                {!apiKey && !simulationMode && (
+                  <Badge variant="outline" className="text-[10px] gap-1 border-emerald-500/30 text-emerald-600 mt-1">
+                    <Lightbulb className="w-2.5 h-2.5" />
+                    Works offline — add API key for AI insights
+                  </Badge>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -821,7 +1043,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
         </Card>
       </motion.div>
 
-      {/* ─── Stats Row ────────────────────────────────────── */}
+      {/* Stats Row */}
       {calculatedRatios.length > 0 && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card>
@@ -851,7 +1073,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
         </motion.div>
       )}
 
-      {/* ─── Tabs ─────────────────────────────────────────── */}
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="calculator" className="text-xs gap-1">
@@ -868,7 +1090,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
           </TabsTrigger>
         </TabsList>
 
-        {/* ═══ Tab 1: Ratio Calculator ═════════════════════ */}
+        {/* Tab 1: Ratio Calculator */}
         <TabsContent value="calculator" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Input Panel */}
@@ -884,7 +1106,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="max-h-[600px] pr-3">
+                  <ScrollArea className="max-h-[50vh] pr-3">
                     <div className="space-y-4">
                       {/* Income Statement Group */}
                       <div>
@@ -991,7 +1213,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                       <p className="text-xs mt-1 opacity-70">All ratios update automatically as you type</p>
                     </div>
                   ) : (
-                    <ScrollArea className="max-h-[600px]">
+                    <ScrollArea className="max-h-[50vh]">
                       <div className="space-y-4 pr-3">
                         {/* Group ratios by category */}
                         {(['liquidity', 'profitability', 'leverage', 'efficiency', 'market'] as const).map(category => {
@@ -1074,6 +1296,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
+                    <div className="overflow-x-auto">
                     <ScrollArea className="max-h-[300px]">
                       <Table>
                         <TableHeader>
@@ -1115,6 +1338,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                         </TableBody>
                       </Table>
                     </ScrollArea>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -1122,7 +1346,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
           </div>
         </TabsContent>
 
-        {/* ═══ Tab 2: Balance Sheet Analyzer ═══════════════ */}
+        {/* Tab 2: Balance Sheet Analyzer */}
         <TabsContent value="balance-sheet" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Balance Sheet Input */}
@@ -1328,7 +1552,7 @@ EQUITY
           </div>
         </TabsContent>
 
-        {/* ═══ Tab 3: AI Analysis ══════════════════════════ */}
+        {/* Tab 3: AI Analysis */}
         <TabsContent value="ai-analysis" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* RAG-Powered Document Analysis */}
@@ -1375,15 +1599,27 @@ EQUITY
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
-                  {isRagAnalyzing ? 'Analyzing Documents...' : 'Analyze Documents'}
+                  {isRagAnalyzing ? 'Analyzing Documents...' : (apiKey || simulationMode) ? 'Analyze Documents' : 'Analyze Documents (Offline)'}
                 </Button>
+
+                {chunks.length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={applyRagToCalculator}
+                    className="w-full text-xs gap-1"
+                  >
+                    <FileSpreadsheet className="w-3 h-3" />
+                    Use Document Data
+                  </Button>
+                )}
 
                 {/* RAG Results */}
                 {ragAnalysis && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                     <Separator className="my-2" />
                     <ScrollArea className="max-h-[400px]">
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap pr-3">
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap pr-3 break-words [overflow-wrap:break-word]">
                         {ragAnalysis}
                       </div>
                     </ScrollArea>
@@ -1448,7 +1684,7 @@ EQUITY
                   ) : (
                     <Brain className="w-4 h-4" />
                   )}
-                  {isAnalyzing ? 'Generating Analysis...' : 'Get AI Analysis'}
+                  {isAnalyzing ? 'Generating Analysis...' : (apiKey || simulationMode) ? 'Get AI Analysis' : 'Get Analysis (Offline)'}
                 </Button>
 
                 {/* AI Results */}
@@ -1456,7 +1692,7 @@ EQUITY
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                     <Separator className="my-2" />
                     <ScrollArea className="max-h-[400px]">
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap pr-3">
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap pr-3 break-words [overflow-wrap:break-word]">
                         {aiAnalysis}
                       </div>
                     </ScrollArea>
@@ -1477,6 +1713,7 @@ EQUITY
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="overflow-x-auto">
                   <ScrollArea className="max-h-[250px]">
                     <Table>
                       <TableHeader>
@@ -1505,6 +1742,7 @@ EQUITY
                       </TableBody>
                     </Table>
                   </ScrollArea>
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>

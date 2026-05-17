@@ -12,10 +12,11 @@ import TaxView from '@/components/TaxView';
 import AnalysisView from '@/components/AnalysisView';
 import ColabView from '@/components/ColabView';
 import SettingsView from '@/components/SettingsView';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { useRAGPipeline } from '@/hooks/useRAGPipeline';
 
-/* ═══════════════════════ Constants ═══════════════════════ */
+// Constants
 
 const SAMPLE_QUERIES = [
   'What are the key risk factors identified across all documents?',
@@ -28,12 +29,12 @@ const SAMPLE_QUERIES = [
   'Compare financial performance across the portfolio companies',
 ];
 
-/* ═══════════════════════ Colab Notebook Code ═══════════════════════ */
+// Colab Notebook Code
 
 const COLAB_CODE = `# ╔══════════════════════════════════════════════════════════════════════════╗
 # ║  NEXUS — Agentic RAG for Financial Intelligence | Google Colab Notebook ║
 # ║  4-Agent Pipeline: Ingestion → Retrieval → Reasoning → Synthesis       ║
-# ║  Powered by Gemma 4 31B IT + Gemini Embedding 2 (Free Tier)            ║
+# ║  Powered by Gemini 2.0 Flash + Gemini Embedding 2 (Free Tier)          ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 #
 # Paste this entire file into a single Colab cell, or split at the
@@ -68,11 +69,11 @@ if not GEMINI_KEY:
 
 if GEMINI_KEY:
     genai.configure(api_key=GEMINI_KEY)
-    gen_model = genai.GenerativeModel('gemma-4-31b-it')
+    gen_model = genai.GenerativeModel('gemini-2.0-flash')
     EMBEDDING_MODEL = 'gemini-embedding-2'
     EMBEDDING_DIM = 768
     print("✓ Gemini API configured")
-    print(f"  Generation: Gemma 4 31B IT")
+    print(f"  Generation: Gemini 2.0 Flash")
     print(f"  Embeddings: Gemini Embedding 2 ({EMBEDDING_DIM}-dim)")
 else:
     gen_model = None
@@ -239,7 +240,7 @@ def rag_query(query, top_k=5):
             print(f"\\nSource {i+1} (score: {s:.3f}): {c['content'][:200]}...")
         return None
     t1 = time.time()
-    prompt = f"""You are NEXUS, a financial intelligence analyst powered by Gemma 4 31B.
+    prompt = f"""You are NEXUS, a financial intelligence analyst powered by Gemini AI.
 Analyze the following financial document excerpts and answer the query.
 
 RULES:
@@ -262,7 +263,7 @@ Provide a thorough, citation-grounded analysis."""
     )
     synthesis_ms = (time.time() - t1) * 1000
     total_ms = (time.time() - t0) * 1000
-    print(f"[Reasoning Agent] Gemma 4 31B synthesis in {synthesis_ms:.0f}ms")
+    print(f"[Reasoning Agent] Gemini 2.0 Flash synthesis in {synthesis_ms:.0f}ms")
     print(f"[Synthesis Agent] Total pipeline: {total_ms:.0f}ms")
     print(f"\\n{'='*60}")
     print(response.text)
@@ -296,7 +297,7 @@ while True:
         rag_query(query)
 `;
 
-/* ═══════════════════════ Main Page ═══════════════════════ */
+// Main Page
 
 export default function NexusPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -366,7 +367,7 @@ export default function NexusPage() {
     handleModeChange(appMode);
   };
 
-  /* ═══════════════════════ Tab Content ═══════════════════════ */
+  // Tab Content
 
   const tabContent: Record<string, React.ReactNode> = {
     dashboard: (
@@ -413,6 +414,7 @@ export default function NexusPage() {
         apiKey={apiKey}
         generationModel={config.generationModel}
         simulationMode={config.simulationMode}
+        chunks={chunks}
         isProcessing={isProcessing}
         setIsProcessing={setIsProcessing}
       />
@@ -454,41 +456,43 @@ export default function NexusPage() {
     ),
   };
 
-  /* ═══════════════════════ Render ═══════════════════════ */
+  // Render
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navigation
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        appMode={appMode}
-        onModeChange={handleModeChange}
-        apiKey={apiKey}
-        setApiKey={setApiKey}
-      />
+    <ErrorBoundary>
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          appMode={appMode}
+          onModeChange={handleModeChange}
+          apiKey={apiKey}
+          setApiKey={setApiKey}
+        />
 
-      <main className="flex-1 pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {tabContent[activeTab] || tabContent.dashboard}
-        </motion.div>
-      </main>
+        <main className="flex-1 pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            {tabContent[activeTab] || tabContent.dashboard}
+          </motion.div>
+        </main>
 
-      <footer className="mt-auto border-t border-border bg-muted/30 py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-semibold">NEXUS</span>
-            <span>•</span>
-            <span>Financial Intelligence Platform</span>
+        <footer className="mt-auto border-t border-border bg-muted/30 py-4">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="font-semibold">NEXUS</span>
+              <span>•</span>
+              <span>Financial Intelligence Platform</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {config.simulationMode ? 'Simulation Mode' : 'Live Mode'} • {config.embeddingModel} ({config.embeddingDimensions || 768}-dim) • {config.generationModel}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {config.simulationMode ? 'Simulation Mode' : 'Live Mode'} • {config.embeddingModel} ({config.embeddingDimensions || 768}-dim) • {config.generationModel}
-          </div>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </ErrorBoundary>
   );
 }

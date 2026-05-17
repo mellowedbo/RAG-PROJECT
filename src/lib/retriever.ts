@@ -1,11 +1,11 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Retriever
-   TF-IDF fallback + cosine similarity on embeddings
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Retriever
+ * TF-IDF fallback + cosine similarity on embeddings
+ */
 
 import type { ChunkInfo } from '@/types';
 
-/* ─── TF-IDF Retriever (Fallback) ──────────────────────────── */
+// TF-IDF Retriever (Fallback)
 
 const STOP_WORDS = new Set([
   'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
@@ -82,7 +82,7 @@ export function scoreChunksByTFIDF(
   return scored.sort((a, b) => b.score - a.score).slice(0, topK);
 }
 
-/* ─── Cosine Similarity Retriever ──────────────────────────── */
+// Cosine Similarity Retriever
 
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;

@@ -1,8 +1,8 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Storage Abstraction
-   Hot: localStorage (fast, small, ~5MB limit)
-   Cold: IndexedDB (slower, large, ~50MB+ limit)
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Storage Abstraction
+ * Hot: localStorage (fast, small, ~5MB limit)
+ * Cold: IndexedDB (slower, large, ~50MB+ limit)
+ */
 
 import type { DocInfo, ChunkInfo } from '@/types';
 
@@ -14,7 +14,7 @@ const COLD_DB_NAME = 'nexus-vectordb';
 const COLD_STORE_NAME = 'chunks';
 const COLD_DB_VERSION = 1;
 
-/* ─── Hot Storage (localStorage) ──────────────────────────── */
+// Hot Storage (localStorage)
 
 export function saveDocsToHot(docs: DocInfo[]): void {
   try {
@@ -79,7 +79,7 @@ export function loadConfigFromHot(): Record<string, unknown> | null {
   }
 }
 
-/* ─── Cold Storage (IndexedDB) ─────────────────────────────── */
+// Cold Storage (IndexedDB)
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

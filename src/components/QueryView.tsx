@@ -17,7 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ChunkInfo, AgentStep, CitedChunk, QueryMetrics } from '@/types';
 
-/* ═══════════════════════ Query View ═══════════════════════ */
+// Query View
 
 interface QueryViewProps {
   chunks: ChunkInfo[];

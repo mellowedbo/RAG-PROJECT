@@ -1,9 +1,8 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Embeddings Client
-   Gemini Embedding 2 via /api/gemini route
-   Supports task_type, output_dimensionality, and multimodal inputs
-   Simulation mode returns deterministic mock vectors
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Embeddings Client
+ * Gemini Embedding 2 via /api/gemini route
+ * Supports task_type, output_dimensionality, and simulation mode
+ */
 
 import type { PipelineConfig } from '@/types';
 

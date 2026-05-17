@@ -1,8 +1,7 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Vector Database (In-Memory + IndexedDB)
-   Brute-force cosine similarity search for <10K chunks.
-   No external dependency needed.
-   ═══════════════════════════════════════════════════════════ */
+/**
+ * Vector Database (In-Memory + IndexedDB)
+ * Brute-force cosine similarity search for <10K chunks.
+ */
 
 import type { ChunkInfo, VectorSearchResult } from '@/types';
 import { cosineSimilarity } from '@/lib/retriever';

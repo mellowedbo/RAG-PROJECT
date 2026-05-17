@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    // ─── AGENT 1: RETRIEVAL AGENT ──────────────────────────────
+    // AGENT 1: RETRIEVAL AGENT
     // Fetch all chunks from specified documents (or all if none specified)
     const whereClause = documentIds?.length > 0
       ? { documentId: { in: documentIds } }
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const retrievalStart = Date.now();
 
-    // ─── AGENT 2: RANKING AGENT ────────────────────────────────
+    // AGENT 2: RANKING AGENT
     // Score and rank chunks by relevance
     const topChunks = scoreChunksByRelevance(query, allChunks, 8);
     const rankingDuration = Date.now() - retrievalStart;
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     const finalChunks = relevantChunks.length > 0 ? relevantChunks : topChunks.slice(0, 5);
 
-    // ─── AGENT 3: REASONING AGENT (LLM) ───────────────────────
+    // AGENT 3: REASONING AGENT (LLM)
     // Build context from retrieved chunks with citations
     const contextBlocks = finalChunks.map((chunk, i) => {
       const doc = chunk.documentId;
@@ -132,7 +132,7 @@ Provide a thorough, citation-grounded analysis.`;
       );
     }
 
-    // ─── AGENT 4: SYNTHESIS METRICS ────────────────────────────
+    // AGENT 4: SYNTHESIS METRICS
     const totalLatency = Date.now() - startTime;
     const avgScore = finalChunks.reduce((acc, c) => acc + c.score, 0) / finalChunks.length;
     const confidenceScore = Math.min(0.99, Math.max(0.1, avgScore / 10));

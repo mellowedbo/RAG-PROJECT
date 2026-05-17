@@ -1,6 +1,4 @@
-/* ═══════════════════════════════════════════════════════════
-   NEXUS — Pre-loaded Demo Documents & Chunks
-   ═══════════════════════════════════════════════════════════ */
+// NEXUS — Pre-loaded Demo Documents & Chunks
 
 import type { DocInfo, ChunkInfo } from '@/types';
 
