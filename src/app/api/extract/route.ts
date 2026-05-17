@@ -19,8 +19,9 @@ export async function POST(request: NextRequest) {
     } else if (filename.endsWith('.pdf')) {
       // PDF extraction using pdf-parse
       try {
-        const pdfParse = (await import('pdf-parse')).default;
-        const data = await pdfParse(buffer);
+        const pdfParseModule = await import('pdf-parse');
+        const pdfParse = (pdfParseModule as Record<string, unknown>).default || pdfParseModule;
+        const data = await (pdfParse as (buf: Buffer) => Promise<{ text: string }>)(buffer);
         text = data.text;
       } catch {
         return NextResponse.json(
