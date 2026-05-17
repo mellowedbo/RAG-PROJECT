@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Key, Eye, EyeOff, Zap, Check, Shield, Database,
@@ -62,28 +62,39 @@ export default function SettingsView({
   embeddingProgress,
 }: SettingsViewProps) {
   const [showKey, setShowKey] = useState(false);
-  const [tempKey, setTempKey] = useState(apiKey);
+  const [editKey, setEditKey] = useState('');
   const [saved, setSaved] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isEditingKey, setIsEditingKey] = useState(false);
 
-  // Calculate storage lazily (avoids setState-in-effect lint)
-  const computeStorageMB = () => {
-    try {
-      let total = 0;
-      for (const key of Object.keys(localStorage)) {
-        total += (localStorage.getItem(key) || '').length;
+  const displayKey = isEditingKey ? editKey : apiKey;
+
+  // Storage display — start with 0 to avoid hydration mismatch, update after mount
+  const [storageMB, setStorageMB] = useState('0.00');
+  const [hasMounted, setHasMounted] = useState(false);
+
+  // Compute storage on first render on client
+  // Use a state flag to ensure this only runs once
+  if (!hasMounted && typeof window !== 'undefined') {
+    setHasMounted(true); // This triggers a re-render but only once
+    queueMicrotask(() => {
+      try {
+        let total = 0;
+        for (const key of Object.keys(localStorage)) {
+          total += (localStorage.getItem(key) || '').length;
+        }
+        setStorageMB((total / 1024 / 1024).toFixed(2));
+      } catch {
+        setStorageMB('0.00');
       }
-      return (total / 1024 / 1024).toFixed(2);
-    } catch {
-      return '0.00';
-    }
-  };
-  const [storageMB, setStorageMB] = useState(computeStorageMB);
+    });
+  }
 
   const handleSaveKey = () => {
-    setApiKey(tempKey);
-    localStorage.setItem('nexus-gemini-key', tempKey);
+    setApiKey(displayKey);
+    localStorage.setItem('nexus-gemini-key', displayKey);
     setSaved(true);
+    setIsEditingKey(false);
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -173,8 +184,9 @@ export default function SettingsView({
                 <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
                   type={showKey ? 'text' : 'password'}
-                  value={tempKey}
-                  onChange={(e) => { setTempKey(e.target.value); setSaved(false); }}
+                  value={displayKey}
+                  onChange={(e) => { if (!isEditingKey) { setIsEditingKey(true); setEditKey(e.target.value); } else { setEditKey(e.target.value); } setSaved(false); }}
+                  onFocus={() => { if (!isEditingKey) { setIsEditingKey(true); setEditKey(apiKey); }}}
                   placeholder="Enter your Gemini API key"
                   className="pl-8 pr-8"
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}

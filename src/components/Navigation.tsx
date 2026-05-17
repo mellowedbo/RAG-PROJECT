@@ -29,13 +29,17 @@ function ApiKeyInput({
   setApiKey: (k: string) => void;
 }) {
   const [showKey, setShowKey] = useState(false);
-  const [tempKey, setTempKey] = useState(apiKey);
+  const [editKey, setEditKey] = useState('');
   const [saved, setSaved] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const displayKey = isEditing ? editKey : apiKey;
 
   const handleSave = () => {
-    setApiKey(tempKey);
-    localStorage.setItem('nexus-gemini-key', tempKey);
+    setApiKey(editKey);
+    localStorage.setItem('nexus-gemini-key', editKey);
     setSaved(true);
+    setIsEditing(false);
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -45,8 +49,9 @@ function ApiKeyInput({
         <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
         <Input
           type={showKey ? 'text' : 'password'}
-          value={tempKey}
-          onChange={(e) => { setTempKey(e.target.value); setSaved(false); }}
+          value={displayKey}
+          onChange={(e) => { if (!isEditing) { setIsEditing(true); setEditKey(e.target.value); } else { setEditKey(e.target.value); } setSaved(false); }}
+          onFocus={() => { if (!isEditing) { setIsEditing(true); setEditKey(apiKey); } }}
           placeholder="Gemini API Key"
           className="pl-8 pr-8 h-8 text-xs"
           onKeyDown={(e) => e.key === 'Enter' && handleSave()}

@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  title       String
+  filename    String
+  docType     String   @default("custom")  // "annual_report", "10k", "earnings", "market_brief", "risk_assessment", "custom"
+  sector      String?
+  content     String   // full text
+  chunkCount  Int      @default(0)
+  wordCount   Int      @default(0)
+  status      String   @default("uploaded") // "uploaded", "chunked", "indexed", "analyzed"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  chunks      DocumentChunk[]
+  analyses    AnalysisSession[]
+}
+
+model DocumentChunk {
+  id          String   @id @default(cuid())
+  documentId  String
+  content     String
+  chunkIndex  Int
+  section     String?  // detected section heading
+  wordCount   Int
+  charCount   Int
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model AnalysisSession {
+  id          String   @id @default(cuid())
+  title       String
+  domain      String   @default("finance") // "finance", "risk", "compliance", "market", "custom"
+  status      String   @default("processing") // "processing", "completed", "failed"
+  query       String
+  response    String?
+  citedChunks String?  // JSON array of chunk IDs cited
+  agentTrace  String?  // JSON array of agent steps
+  metrics     String?  // JSON: {chunksSearched, chunksRetrieved, latencyMs, confidenceScore}
+  documentIds String?  // JSON array of document IDs used
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  documents   Document[]
+}

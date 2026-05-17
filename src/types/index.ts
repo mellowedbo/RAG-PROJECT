@@ -86,9 +86,19 @@ export const EMBEDDING_MODELS: ModelOption[] = [
     isRecommended: true,
   },
   {
+    id: 'gemini-embedding-exp-03-07',
+    name: 'Gemini Embedding Exp 03-07',
+    description: 'Experimental embedding model — 3072-dim, latest architecture, may change without notice',
+    provider: 'Google',
+    category: 'embedding',
+    maxTokens: 8192,
+    dimensions: 3072,
+    isMultimodal: true,
+  },
+  {
     id: 'text-embedding-004',
     name: 'text-embedding-004',
-    description: 'Legacy text embeddings — 768-dim, text only, stable and fast',
+    description: 'Stable text embeddings — 768-dim, text only, fast and reliable',
     provider: 'Google',
     category: 'embedding',
     maxTokens: 2048,
@@ -116,6 +126,15 @@ export const GENERATION_MODELS: ModelOption[] = [
     maxTokens: 8192,
   },
   {
+    id: 'gemini-2.5-pro-preview-05-06',
+    name: 'Gemini 2.5 Pro',
+    description: 'Most capable Gemini model — deep thinking, 1M context, best for complex financial analysis',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 65536,
+    isMultimodal: true,
+  },
+  {
     id: 'gemini-2.5-flash-preview-05-20',
     name: 'Gemini 2.5 Flash',
     description: 'Latest Gemini with thinking mode — fast, strong reasoning, built-in tools',
@@ -141,6 +160,38 @@ export const GENERATION_MODELS: ModelOption[] = [
     category: 'generation',
     maxTokens: 8192,
     isMultimodal: true,
+  },
+  {
+    id: 'gemma-3-27b-it',
+    name: 'Gemma 3 27B IT',
+    description: 'Open-weight Gemma 3 — 27B params, 96K context, strong instruction following',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+  },
+  {
+    id: 'gemma-3-12b-it',
+    name: 'Gemma 3 12B IT',
+    description: 'Mid-size Gemma 3 — 12B params, efficient for standard financial queries',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+  },
+  {
+    id: 'gemma-3-4b-it',
+    name: 'Gemma 3 4B IT',
+    description: 'Compact Gemma 3 — 4B params, fast inference, good for simple tasks',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+  },
+  {
+    id: 'gemma-3-1b-it',
+    name: 'Gemma 3 1B IT',
+    description: 'Smallest Gemma 3 — 1B params, ultra-fast, basic instruction following',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
   },
 ];
 
@@ -178,6 +229,17 @@ export interface VectorSearchResult {
   id: string;
   score: number;
   metadata: ChunkInfo;
+}
+
+/* ─── Compliance Types ───────────────────────────────────── */
+
+export interface ComplianceFinding {
+  category: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  description: string;
+  reference: string;
+  chunkIndex: number;
+  excerpt: string;
 }
 
 /* ─── Accounting Types ───────────────────────────────────── */
