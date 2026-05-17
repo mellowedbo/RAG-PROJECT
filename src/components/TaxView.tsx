@@ -1511,7 +1511,7 @@ RULES:
       {/* Chat Area */}
       <div className="lg:col-span-3 space-y-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="min-h-[500px] max-h-[80vh] flex flex-col">
+          <Card className="min-h-[500px] max-h-[80vh] flex flex-col overflow-hidden">
             <CardHeader className="pb-3 shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">

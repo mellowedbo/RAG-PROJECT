@@ -14,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import type { ChunkInfo, AgentStep, CitedChunk, QueryMetrics } from '@/types';
 
@@ -104,7 +103,7 @@ export default function QueryView({
           </CardContent>
         </Card>
 
-        <Card className="min-h-[300px] max-h-[75vh] flex flex-col">
+        <Card className="min-h-[300px] max-h-[75vh] flex flex-col overflow-hidden">
           <CardHeader className="pb-2 shrink-0">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
@@ -119,7 +118,7 @@ export default function QueryView({
               )}
             </div>
           </CardHeader>
-          <CardContent className="flex-1 overflow-hidden min-h-0">
+          <CardContent className="flex-1 min-h-0 overflow-y-auto">
             {error && (
               <div className="text-sm text-red-600 flex items-center gap-2 mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/20">
                 <AlertCircle className="w-4 h-4 shrink-0" />{error}
@@ -134,32 +133,30 @@ export default function QueryView({
             )}
 
             {result ? (
-              <ScrollArea className="h-full">
-                <div className="space-y-4 pr-3">
-                  <MarkdownRenderer content={result} />
-                  {citedChunks.length > 0 && (
-                    <div>
-                      <Separator className="mb-3" />
-                      <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5 uppercase tracking-wider">
-                        <BookOpen className="w-3 h-3" />Cited Sources ({citedChunks.length})
-                      </h4>
-                      <div className="space-y-2">
-                        {citedChunks.map((chunk) => (
-                          <motion.div key={chunk.chunkId} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="p-2.5 rounded-lg border border-border text-xs hover:border-emerald-500/20 transition-colors">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <Badge variant="secondary" className="text-[9px] h-4">Source {chunk.index}</Badge>
-                              <span className="text-muted-foreground">Chunk #{chunk.chunkIndex}</span>
-                              {chunk.section && <><span className="text-muted-foreground">•</span><span className="text-muted-foreground">{chunk.section}</span></>}
-                              <span className="text-emerald-600 ml-auto font-medium">Score: {chunk.score.toFixed(2)}</span>
-                            </div>
-                            <p className="text-muted-foreground leading-relaxed">{chunk.preview}</p>
-                          </motion.div>
-                        ))}
-                      </div>
+              <div className="space-y-4 pr-1">
+                <MarkdownRenderer content={result} />
+                {citedChunks.length > 0 && (
+                  <div>
+                    <Separator className="mb-3" />
+                    <h4 className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                      <BookOpen className="w-3 h-3" />Cited Sources ({citedChunks.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {citedChunks.map((chunk) => (
+                        <motion.div key={chunk.chunkId} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="p-2.5 rounded-lg border border-border text-xs hover:border-emerald-500/20 transition-colors">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <Badge variant="secondary" className="text-[9px] h-4">Source {chunk.index}</Badge>
+                            <span className="text-muted-foreground">Chunk #{chunk.chunkIndex}</span>
+                            {chunk.section && <><span className="text-muted-foreground">•</span><span className="text-muted-foreground">{chunk.section}</span></>}
+                            <span className="text-emerald-600 ml-auto font-medium">Score: {chunk.score.toFixed(2)}</span>
+                          </div>
+                          <p className="text-muted-foreground leading-relaxed">{chunk.preview}</p>
+                        </motion.div>
+                      ))}
                     </div>
-                  )}
-                </div>
-              </ScrollArea>
+                  </div>
+                )}
+              </div>
             ) : !isAnalyzing ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Brain className="w-10 h-10 mb-3 opacity-30" />
@@ -175,7 +172,7 @@ export default function QueryView({
 
       {/* Agent trace sidebar */}
       <div className="lg:col-span-2">
-        <Card className="h-full max-h-[75vh] flex flex-col">
+        <Card className="max-h-[75vh] flex flex-col overflow-hidden">
           <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-sm flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-500" />
@@ -183,7 +180,7 @@ export default function QueryView({
             </CardTitle>
             <p className="text-xs text-muted-foreground">Real-time RAG pipeline status</p>
           </CardHeader>
-          <CardContent className="space-y-3 flex-1 overflow-y-auto min-h-0">
+          <CardContent className="space-y-3 flex-1 min-h-0 overflow-y-auto">
             {agentSteps.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-8">Start an analysis to see the agent trace</div>
             ) : (

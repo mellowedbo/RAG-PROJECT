@@ -1109,7 +1109,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Input Panel */}
             <div className="lg:col-span-1 min-w-0">
-              <Card className="max-h-[80vh] flex flex-col">
+              <Card className="max-h-[80vh] flex flex-col overflow-hidden">
                 <CardHeader className="pb-3 shrink-0">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Calculator className="w-4 h-4 text-emerald-600" />
@@ -1119,9 +1119,8 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                     Enter values to auto-calculate all ratios
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden min-h-0">
-                  <ScrollArea className="h-full pr-3">
-                    <div className="space-y-4">
+                <CardContent className="flex-1 min-h-0 overflow-y-auto">
+                  <div className="space-y-4 pr-1">
                       {/* Income Statement Group */}
                       <div>
                         <div className="flex items-center gap-1.5 mb-2">
@@ -1198,14 +1197,13 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                         </div>
                       </div>
                     </div>
-                  </ScrollArea>
                 </CardContent>
               </Card>
             </div>
 
             {/* Ratios Results Panel */}
             <div className="lg:col-span-2">
-              <Card className="max-h-[80vh] flex flex-col">
+              <Card className="max-h-[80vh] flex flex-col overflow-hidden">
                 <CardHeader className="pb-3 shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm flex items-center gap-2">
@@ -1219,7 +1217,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="flex-1 overflow-hidden min-h-0">
+                <CardContent className="flex-1 min-h-0 overflow-y-auto">
                   {calculatedRatios.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                       <Calculator className="w-10 h-10 mb-3 opacity-30" />
@@ -1227,8 +1225,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                       <p className="text-xs mt-1 opacity-70">All ratios update automatically as you type</p>
                     </div>
                   ) : (
-                    <ScrollArea className="h-full">
-                      <div className="space-y-4 pr-3">
+                    <div className="space-y-4 pr-1">
                         {/* Group ratios by category */}
                         {(['liquidity', 'profitability', 'leverage', 'efficiency', 'market'] as const).map(category => {
                           const categoryRatios = calculatedRatios.filter(r => r.category === category);
@@ -1295,7 +1292,6 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                           );
                         })}
                       </div>
-                    </ScrollArea>
                   )}
                 </CardContent>
               </Card>
@@ -1570,7 +1566,7 @@ EQUITY
         <TabsContent value="ai-analysis" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* RAG-Powered Document Analysis */}
-            <Card className="max-h-[80vh] flex flex-col">
+            <Card className="max-h-[80vh] flex flex-col overflow-hidden">
               <CardHeader className="pb-3 shrink-0">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -1632,18 +1628,16 @@ EQUITY
                 {ragAnalysis && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                     <Separator className="my-2" />
-                    <ScrollArea className="max-h-[400px]">
-                      <div className="pr-3">
-                        <MarkdownRenderer content={ragAnalysis} />
-                      </div>
-                    </ScrollArea>
+                    <div className="pr-1">
+                      <MarkdownRenderer content={ragAnalysis} />
+                    </div>
                   </motion.div>
                 )}
               </CardContent>
             </Card>
 
             {/* AI Financial Advisor */}
-            <Card className="max-h-[80vh] flex flex-col">
+            <Card className="max-h-[80vh] flex flex-col overflow-hidden">
               <CardHeader className="pb-3 shrink-0">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Brain className="w-4 h-4 text-emerald-600" />
@@ -1705,11 +1699,9 @@ EQUITY
                 {aiAnalysis && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                     <Separator className="my-2" />
-                    <ScrollArea className="max-h-[400px]">
-                      <div className="pr-3">
-                        <MarkdownRenderer content={aiAnalysis} />
-                      </div>
-                    </ScrollArea>
+                    <div className="pr-1">
+                      <MarkdownRenderer content={aiAnalysis} />
+                    </div>
                   </motion.div>
                 )}
               </CardContent>

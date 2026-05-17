@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Colab View
 
@@ -84,14 +83,12 @@ export default function ColabView({
         ))}
       </div>
 
-      <Card className="max-h-[70vh] flex flex-col">
+      <Card className="max-h-[70vh] flex flex-col overflow-hidden">
         <CardHeader className="pb-2 shrink-0"><CardTitle className="text-sm flex items-center gap-2"><Code2 className="w-4 h-4 text-emerald-600" />Complete Notebook Code</CardTitle></CardHeader>
-        <CardContent className="flex-1 overflow-hidden min-h-0">
-          <ScrollArea className="h-full">
-            <pre className="text-xs font-mono leading-relaxed p-4 rounded-lg bg-muted/50 overflow-x-auto">
-              <code>{colabCode}</code>
-            </pre>
-          </ScrollArea>
+        <CardContent className="flex-1 min-h-0 overflow-y-auto">
+          <pre className="text-xs font-mono leading-relaxed p-4 rounded-lg bg-muted/50 overflow-x-auto">
+            <code>{colabCode}</code>
+          </pre>
         </CardContent>
       </Card>
     </div>
