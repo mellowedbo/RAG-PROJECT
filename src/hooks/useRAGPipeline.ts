@@ -4,7 +4,7 @@
    Powered by Gemini Embedding 2 + Gemma 4 31B IT
    ═══════════════════════════════════════════════════════════ */
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type {
   AppMode,
   DocInfo,
@@ -94,22 +94,16 @@ export function useRAGPipeline() {
   const [documents, setDocuments] = useState<DocInfo[]>(DEMO_DOCUMENTS);
   const [chunks, setChunks] = useState<ChunkInfo[]>(DEMO_CHUNKS);
   // Initialize with defaults to avoid hydration mismatch (server vs client)
-  // Load from localStorage via microtask after first render
   const [apiKey, setApiKeyState] = useState<string>('');
   const [config, setConfigState] = useState<PipelineConfig>(DEFAULT_CONFIG);
-  const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate from localStorage on first client render
-  // Uses a state flag to ensure this only runs once
-  if (!hydrated && typeof window !== 'undefined') {
-    setHydrated(true);
-    queueMicrotask(() => {
-      const savedKey = loadApiKeyFromHot();
-      const savedConfig = loadConfigFromHot();
-      if (savedKey) setApiKeyState(savedKey);
-      if (savedConfig) setConfigState({ ...DEFAULT_CONFIG, ...savedConfig });
-    });
-  }
+  // Hydrate from localStorage after mount via useEffect
+  useEffect(() => {
+    const savedKey = loadApiKeyFromHot();
+    const savedConfig = loadConfigFromHot();
+    if (savedKey) setApiKeyState(savedKey);
+    if (savedConfig) setConfigState({ ...DEFAULT_CONFIG, ...savedConfig });
+  }, []);
 
   /* ─── Query State ────────────────────────────────────────── */
   const [queryResult, setQueryResult] = useState<string>('');
@@ -709,7 +703,6 @@ ${context}`;
     chunks,
     apiKey,
     config,
-    hydrated,
     queryResult,
     citedChunks,
     metrics,

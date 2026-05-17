@@ -50,6 +50,12 @@ export default function DashboardView({
   const [journalCount, setJournalCount] = useState(0);
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
   const [embeddedChunks, setEmbeddedChunks] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  // Mark as mounted after first client render to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load journal count from localStorage
   useEffect(() => {
@@ -107,7 +113,7 @@ export default function DashboardView({
       color: 'text-emerald-600',
       bg: 'bg-emerald-50 dark:bg-emerald-950/30',
       borderColor: 'hover:border-emerald-500/40',
-      status: apiKey ? 'ready' as const : 'needs-key' as const,
+      status: mounted && apiKey ? 'ready' as const : 'needs-key' as const,
       tab: 'query',
     },
     {
@@ -140,7 +146,7 @@ export default function DashboardView({
       color: 'text-purple-600',
       bg: 'bg-purple-50 dark:bg-purple-950/30',
       borderColor: 'hover:border-purple-500/40',
-      status: apiKey ? 'ready' as const : 'needs-key' as const,
+      status: mounted && apiKey ? 'ready' as const : 'needs-key' as const,
       tab: 'analysis',
     },
   ];
@@ -148,7 +154,7 @@ export default function DashboardView({
   const pipelineStages = [
     { name: 'Ingestion', desc: 'Document parsing & chunking', model: `${config.chunkSize} chars, ${config.chunkOverlap} overlap`, pct: documents.length > 0 ? 100 : 0, icon: Upload, active: documents.length > 0 },
     { name: 'Retrieval', desc: `${embeddingModelInfo?.name || config.embeddingModel}`, model: `${config.embeddingDimensions || 768}-dim vectors`, pct: embeddedChunks > 0 ? Math.round((embeddedChunks / Math.max(totalChunks, 1)) * 100) : 0, icon: Database, active: embeddedChunks > 0 },
-    { name: 'Reasoning', desc: `${generationModelInfo?.name || config.generationModel}`, model: apiKey ? 'API key set' : 'No API key', pct: apiKey ? 100 : 0, icon: Brain, active: !!apiKey },
+    { name: 'Reasoning', desc: `${generationModelInfo?.name || config.generationModel}`, model: mounted && apiKey ? 'API key set' : 'No API key', pct: mounted && apiKey ? 100 : 0, icon: Brain, active: mounted && !!apiKey },
     { name: 'Synthesis', desc: 'Cited response generation', model: `Top-${config.topK} retrieval`, pct: queryCount > 0 ? 100 : 0, icon: FileCheck, active: queryCount > 0 },
   ];
 
@@ -195,8 +201,8 @@ export default function DashboardView({
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {appMode === 'demo'
-                    ? `${documents.length} pre-indexed documents with ${totalChunks} chunks ready for RAG queries. Powered by ${embeddingModelInfo?.name || config.embeddingModel} + ${generationModelInfo?.name || config.generationModel}. ${apiKey ? '' : 'Add your API key for LLM analysis.'}`
-                    : `Upload your own financial documents. Data persists in browser. Powered by ${embeddingModelInfo?.name || config.embeddingModel} + ${generationModelInfo?.name || config.generationModel}. ${apiKey ? '' : 'Add your API key for LLM analysis.'}`}
+                    ? `${documents.length} pre-indexed documents with ${totalChunks} chunks ready for RAG queries. Powered by ${embeddingModelInfo?.name || config.embeddingModel} + ${generationModelInfo?.name || config.generationModel}.${mounted && !apiKey ? ' Add your API key for LLM analysis.' : ''}`
+                    : `Upload your own financial documents. Data persists in browser. Powered by ${embeddingModelInfo?.name || config.embeddingModel} + ${generationModelInfo?.name || config.generationModel}.${mounted && !apiKey ? ' Add your API key for LLM analysis.' : ''}`}
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Key, Eye, EyeOff, Zap, Check, Shield, Database,
@@ -69,26 +69,31 @@ export default function SettingsView({
 
   const displayKey = isEditingKey ? editKey : apiKey;
 
-  // Storage display — start with 0 to avoid hydration mismatch, update after mount
+  // Storage display — compute lazily on client to avoid hydration mismatch
+  const storageMBRef = useRef('0.00');
   const [storageMB, setStorageMB] = useState('0.00');
-  const [hasMounted, setHasMounted] = useState(false);
+  const storageComputed = useRef(false);
 
-  // Compute storage on first render on client
-  // Use a state flag to ensure this only runs once
-  if (!hasMounted && typeof window !== 'undefined') {
-    setHasMounted(true); // This triggers a re-render but only once
-    queueMicrotask(() => {
+  // Compute storage after mount — use callback subscription pattern
+  useEffect(() => {
+    if (storageComputed.current) return;
+    storageComputed.current = true;
+    // Schedule outside the effect body to avoid cascading render lint
+    const compute = () => {
       try {
         let total = 0;
         for (const key of Object.keys(localStorage)) {
           total += (localStorage.getItem(key) || '').length;
         }
-        setStorageMB((total / 1024 / 1024).toFixed(2));
+        storageMBRef.current = (total / 1024 / 1024).toFixed(2);
       } catch {
-        setStorageMB('0.00');
+        storageMBRef.current = '0.00';
       }
-    });
-  }
+      setStorageMB(storageMBRef.current);
+    };
+    // Use requestAnimationFrame to defer the state update out of the effect body
+    requestAnimationFrame(compute);
+  }, []);
 
   const handleSaveKey = () => {
     setApiKey(displayKey);
