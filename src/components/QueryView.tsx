@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Brain, Search, Sparkles,
-  Activity, CheckCircle2, AlertCircle, Cpu, Database,
+  Activity, CheckCircle2, AlertCircle, Database,
   Send, Loader2, BookOpen,
   FileSearch, Zap, Gauge, CircleDot, Key,
 } from 'lucide-react';
@@ -16,8 +16,6 @@ import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ChunkInfo, AgentStep, CitedChunk, QueryMetrics } from '@/types';
-
-// Query View
 
 interface QueryViewProps {
   chunks: ChunkInfo[];
@@ -70,14 +68,14 @@ export default function QueryView({
             )}
 
             <div className="flex gap-2">
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   placeholder={chunks.length === 0 ? 'No documents available...' : 'Ask a financial question...'}
-                  className="pl-9"
+                  className="pl-9 min-w-0"
                   disabled={isAnalyzing || chunks.length === 0}
                 />
               </div>
@@ -95,7 +93,7 @@ export default function QueryView({
                     key={sq}
                     onClick={() => handleSampleQuery(sq)}
                     disabled={isAnalyzing || chunks.length === 0}
-                    className="text-[11px] px-2.5 py-1 rounded-full border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all duration-200 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="text-[11px] px-2.5 py-1 rounded-full border border-border hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all duration-200 text-muted-foreground hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed text-wrap break-words max-w-[280px]"
                   >
                     {sq}
                   </button>

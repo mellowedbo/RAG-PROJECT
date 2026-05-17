@@ -3,7 +3,13 @@
  * Regex pattern matching against SEC, SOX, FCPA, GDPR, OFAC, Basel III
  */
 
-import type { ComplianceFinding, ChunkInfo } from '@/types';
+import type { ComplianceFinding } from '@/types';
+
+/** Minimal input shape required by the compliance scanner */
+export interface ComplianceChunkInput {
+  content: string;
+  chunkIndex: number;
+}
 
 interface CompliancePattern {
   category: string;
@@ -22,6 +28,8 @@ export const COMPLIANCE_PATTERNS: CompliancePattern[] = [
       { regex: /may\s+(?:adversely\s+)?affect\s+(?:our\s+)?(?:business|results|financial|operations)/i, severity: 'high', description: 'General risk factor identified', reference: 'SEC Reg S-K Item 105' },
       { regex: /subject\s+to\s+(?:various\s+)?(?:legal|regulatory|governmental)\s+(?:proceedings|actions|investigations)/i, severity: 'critical', description: 'Legal/regulatory proceeding detected', reference: 'SEC Reg S-K Item 103' },
       { regex: /(?:material\s+)?weakness(?:es)?\s+(?:in\s+)?(?:our\s+)?internal\s+control/i, severity: 'critical', description: 'Internal control weakness disclosed', reference: 'SOX Section 404' },
+      { regex: /(?:significant\s+)?deficiency(?:ies)?\s+(?:identified|in|related)/i, severity: 'high', description: 'Control deficiency identified', reference: 'SOX Section 404' },
+      { regex: /(?:substantial|significant)\s+doubt\s+(?:about\s+)?(?:our\s+)?ability\s+to\s+continue/i, severity: 'critical', description: 'Going concern uncertainty', reference: 'ASC 205-40' },
     ],
   },
   {
@@ -29,6 +37,7 @@ export const COMPLIANCE_PATTERNS: CompliancePattern[] = [
     patterns: [
       { regex: /restat(?:e|ed|ement|ing)\s+(?:of\s+)?(?:our\s+)?(?:previously\s+)?(?:issued\s+)?financial/i, severity: 'critical', description: 'Financial restatement indicated', reference: 'SEC Form 8-K Item 4.02' },
       { regex: /(?:impairment|write-?down|write-?off)\s+(?:charge|loss|expense)/i, severity: 'high', description: 'Impairment charge identified', reference: 'ASC 360-10' },
+      { regex: /(?:going\s+concern|substantial\s+doubt)/i, severity: 'critical', description: 'Going concern issue detected', reference: 'ASC 205-40' },
       { regex: /(?:related\s+party|affiliated?\s+entity)\s+(?:transaction|relationship)/i, severity: 'medium', description: 'Related party transaction identified', reference: 'ASC 850' },
     ],
   },
@@ -36,9 +45,11 @@ export const COMPLIANCE_PATTERNS: CompliancePattern[] = [
     category: 'Regulatory Compliance',
     patterns: [
       { regex: /not\s+in\s+compliance\s+with/i, severity: 'high', description: 'Covenant compliance issue', reference: 'Credit Agreement' },
+      { regex: /violation\s+of\s+(?:the\s+)?(?:terms|covenants|agreement)/i, severity: 'high', description: 'Agreement violation detected', reference: 'Contract Law' },
       { regex: /(?:sanctions|embargo|ofac)/i, severity: 'critical', description: 'Sanctions reference detected', reference: 'OFAC / International Sanctions' },
-      { regex: /(?:anti-?corruption|fcpa|bribery)/i, severity: 'critical', description: 'Anti-corruption reference detected', reference: 'FCPA / UK Bribery Act' },
-      { regex: /(?:data\s+breach|cybersecurity\s+incident)/i, severity: 'high', description: 'Cybersecurity risk identified', reference: 'SEC Cyber Disclosure Rules' },
+      { regex: /(?:anti-?corruption|fcpa|bribery|kickback)/i, severity: 'critical', description: 'Anti-corruption reference detected', reference: 'FCPA / UK Bribery Act' },
+      { regex: /(?:data\s+privacy|gdpr|ccpa|personal\s+data)/i, severity: 'medium', description: 'Data privacy regulation reference', reference: 'GDPR / CCPA' },
+      { regex: /(?:cybersecurity|data\s+breach|security\s+incident|ransomware)/i, severity: 'high', description: 'Cybersecurity risk identified', reference: 'SEC Cyber Disclosure Rules' },
     ],
   },
   {
@@ -59,7 +70,7 @@ export const COMPLIANCE_PATTERNS: CompliancePattern[] = [
   },
 ];
 
-export function scanForCompliance(chunks: ChunkInfo[]): ComplianceFinding[] {
+export function scanForCompliance(chunks: ComplianceChunkInput[]): ComplianceFinding[] {
   const findings: ComplianceFinding[] = [];
 
   for (const chunk of chunks) {

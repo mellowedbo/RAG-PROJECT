@@ -109,7 +109,7 @@ export default function DocumentsView({
               <Upload className="w-4 h-4 text-emerald-600" />
               Upload Financial Document
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="break-words">
               Upload a file or paste financial document text. The system will automatically chunk, embed with Gemini Embedding 2, and index it for semantic RAG retrieval. Stored in your browser.
             </CardDescription>
           </CardHeader>
@@ -152,14 +152,14 @@ export default function DocumentsView({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="sm:col-span-1">
+              <div className="sm:col-span-1 min-w-0">
                 <label className="text-xs font-medium mb-1.5 block">Document Title</label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Apple 10-K 2024" />
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Apple 10-K 2024" className="min-w-0" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="text-xs font-medium mb-1.5 block">Type</label>
                 <Select value={docType} onValueChange={setDocType}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="min-w-0"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="10k">10-K Filing</SelectItem>
                     <SelectItem value="earnings">Earnings Report</SelectItem>
@@ -170,9 +170,9 @@ export default function DocumentsView({
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="text-xs font-medium mb-1.5 block">Sector (optional)</label>
-                <Input value={sector} onChange={(e) => setSector(e.target.value)} placeholder="e.g., Technology" />
+                <Input value={sector} onChange={(e) => setSector(e.target.value)} placeholder="e.g., Technology" className="min-w-0" />
               </div>
             </div>
 
@@ -235,7 +235,7 @@ export default function DocumentsView({
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Paste financial document text here..."
-                  className="min-h-[180px] font-mono text-xs"
+                  className="min-h-[180px] font-mono text-xs min-w-0"
                 />
                 <div className="flex items-center justify-between mt-1.5">
                   <span className="text-[11px] text-muted-foreground">{content.split(/\s+/).filter((w) => w).length} words</span>

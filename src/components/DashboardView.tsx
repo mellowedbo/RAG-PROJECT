@@ -18,15 +18,11 @@ import { Button } from '@/components/ui/button';
 import type { DocInfo, ChunkInfo, AppMode, PipelineConfig } from '@/types';
 import { EMBEDDING_MODELS, GENERATION_MODELS } from '@/types';
 
-// Constants
-
 interface ActivityEntry {
   type: 'query' | 'upload' | 'journal';
   description: string;
   timestamp: string;
 }
-
-// Dashboard View
 
 interface DashboardViewProps {
   documents: DocInfo[];

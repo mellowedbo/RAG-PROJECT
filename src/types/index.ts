@@ -71,6 +71,15 @@ export interface ModelOption {
   dimensions?: number;
   isMultimodal?: boolean;
   isRecommended?: boolean;
+  isDeprecated?: boolean;
+}
+
+export interface ModelHealthStatus {
+  modelId: string;
+  available: boolean;
+  latencyMs: number | null;
+  error: string | null;
+  testedAt: string;
 }
 
 export const EMBEDDING_MODELS: ModelOption[] = [
@@ -109,40 +118,22 @@ export const EMBEDDING_MODELS: ModelOption[] = [
 
 export const GENERATION_MODELS: ModelOption[] = [
   {
-    id: 'gemini-2.0-flash',
-    name: 'Gemini 2.0 Flash',
-    description: 'Fast and versatile — best balance of speed and quality, widely available',
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: 'Latest stable with adaptive thinking — best for most tasks, widely available',
     provider: 'Google',
     category: 'generation',
-    maxTokens: 8192,
+    maxTokens: 65536,
     isMultimodal: true,
     isRecommended: true,
   },
   {
-    id: 'gemini-2.0-flash-lite',
-    name: 'Gemini 2.0 Flash Lite',
-    description: 'Lightweight and fastest — cost-effective for simple queries',
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    description: 'Most capable stable model — deep thinking for complex analysis, best quality',
     provider: 'Google',
     category: 'generation',
-    maxTokens: 8192,
-    isMultimodal: true,
-  },
-  {
-    id: 'gemini-1.5-flash',
-    name: 'Gemini 1.5 Flash',
-    description: 'Stable and fast — 1M context window, widely available globally',
-    provider: 'Google',
-    category: 'generation',
-    maxTokens: 8192,
-    isMultimodal: true,
-  },
-  {
-    id: 'gemini-1.5-pro',
-    name: 'Gemini 1.5 Pro',
-    description: 'Most capable stable model — 1M context, best for complex analysis',
-    provider: 'Google',
-    category: 'generation',
-    maxTokens: 8192,
+    maxTokens: 65536,
     isMultimodal: true,
   },
   {
@@ -162,6 +153,44 @@ export const GENERATION_MODELS: ModelOption[] = [
     category: 'generation',
     maxTokens: 65536,
     isMultimodal: true,
+  },
+  {
+    id: 'gemini-2.0-flash',
+    name: 'Gemini 2.0 Flash',
+    description: 'Fast and versatile — excellent balance of speed and quality, widely available',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+  },
+  {
+    id: 'gemini-2.0-flash-lite',
+    name: 'Gemini 2.0 Flash Lite',
+    description: 'Lightweight and fastest — cost-effective for simple queries',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+  },
+  {
+    id: 'gemini-1.5-flash',
+    name: 'Gemini 1.5 Flash (Legacy)',
+    description: 'Stable and fast — 1M context window, widely available globally',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+    isDeprecated: true,
+  },
+  {
+    id: 'gemini-1.5-pro',
+    name: 'Gemini 1.5 Pro (Legacy)',
+    description: 'Most capable stable model — 1M context, best for complex analysis',
+    provider: 'Google',
+    category: 'generation',
+    maxTokens: 8192,
+    isMultimodal: true,
+    isDeprecated: true,
   },
   {
     id: 'gemma-3-27b-it',
@@ -191,6 +220,8 @@ export const GENERATION_MODELS: ModelOption[] = [
 
 export const ALL_MODELS = [...EMBEDDING_MODELS, ...GENERATION_MODELS];
 
+export const ALL_GENERATION_MODEL_IDS: string[] = GENERATION_MODELS.map(m => m.id);
+
 // Pipeline Config
 
 export interface PipelineConfig {
@@ -214,7 +245,7 @@ export const DEFAULT_CONFIG: PipelineConfig = {
   useEmbeddings: true,
   simulationMode: false,
   embeddingModel: 'gemini-embedding-2',
-  generationModel: 'gemini-2.0-flash',
+  generationModel: 'gemini-2.5-flash',
   embeddingDimensions: 768,
   embeddingTaskType: 'RETRIEVAL_DOCUMENT',
 };

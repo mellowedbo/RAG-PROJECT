@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Key, Eye, EyeOff, Zap, Check, Shield, Database,
   Layers, Brain, Cpu, Gauge, Activity, HardDrive,
   FlaskConical, Monitor, Save, RotateCcw,
   Trash2, Download, Sparkles, AlertTriangle,
-  ImageIcon, FileText,
+  ImageIcon, FileText, Loader2, CheckCircle2,
+  XCircle, AlertCircle, Stethoscope, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,7 +34,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import type { PipelineConfig } from '@/types';
+import type { PipelineConfig, ModelHealthStatus } from '@/types';
 import { DEFAULT_CONFIG, EMBEDDING_MODELS, GENERATION_MODELS } from '@/types';
 
 // Settings View
@@ -48,6 +49,53 @@ interface SettingsViewProps {
   config: PipelineConfig;
   onConfigChange: (config: PipelineConfig) => void;
   embeddingProgress: number | null;
+}
+
+// Helper: get availability badge for a model
+function getModelAvailabilityBadge(
+  modelId: string,
+  healthResults: ModelHealthStatus[] | null,
+  isDeprecated?: boolean,
+) {
+  // Deprecated badge takes priority
+  if (isDeprecated) {
+    return (
+      <Badge className="text-[9px] h-4 gap-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800 shrink-0">
+        <AlertCircle className="w-2.5 h-2.5" /> Deprecated
+      </Badge>
+    );
+  }
+
+  if (!healthResults) {
+    return (
+      <Badge variant="secondary" className="text-[9px] h-4 gap-0.5 shrink-0">
+        Not tested
+      </Badge>
+    );
+  }
+
+  const result = healthResults.find(r => r.modelId === modelId);
+  if (!result) {
+    return (
+      <Badge variant="secondary" className="text-[9px] h-4 gap-0.5 shrink-0">
+        Not tested
+      </Badge>
+    );
+  }
+
+  if (result.available) {
+    return (
+      <Badge className="text-[9px] h-4 gap-0.5 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 shrink-0">
+        <CheckCircle2 className="w-2.5 h-2.5" /> Available
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge className="text-[9px] h-4 gap-0.5 bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 shrink-0">
+      <XCircle className="w-2.5 h-2.5" /> Unavailable
+    </Badge>
+  );
 }
 
 export default function SettingsView({
@@ -66,6 +114,17 @@ export default function SettingsView({
   const [saved, setSaved] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isEditingKey, setIsEditingKey] = useState(false);
+
+  // Health check state
+  const [healthResults, setHealthResults] = useState<ModelHealthStatus[] | null>(null);
+  const [healthCheckLoading, setHealthCheckLoading] = useState(false);
+  const [healthCheckError, setHealthCheckError] = useState<string | null>(null);
+
+  // Debounced input state for numeric config fields
+  const [localChunkSize, setLocalChunkSize] = useState(String(config.chunkSize));
+  const [localChunkOverlap, setLocalChunkOverlap] = useState(String(config.chunkOverlap));
+  const [localTopK, setLocalTopK] = useState(String(config.topK));
+  const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const displayKey = isEditingKey ? editKey : apiKey;
 
@@ -94,6 +153,105 @@ export default function SettingsView({
     // Use requestAnimationFrame to defer the state update out of the effect body
     requestAnimationFrame(compute);
   }, []);
+
+  // Sync local debounced state when external config changes
+  useEffect(() => {
+    setLocalChunkSize(String(config.chunkSize));
+    setLocalChunkOverlap(String(config.chunkOverlap));
+    setLocalTopK(String(config.topK));
+  }, [config.chunkSize, config.chunkOverlap, config.topK]);
+
+  // Debounced config update helper
+  const debouncedUpdateConfig = useCallback(
+    (key: string, partial: Partial<PipelineConfig>) => {
+      // Clear existing timer for this key
+      const existing = debounceTimers.current.get(key);
+      if (existing) clearTimeout(existing);
+
+      // Set new timer
+      const timer = setTimeout(() => {
+        onConfigChange({ ...config, ...partial });
+        debounceTimers.current.delete(key);
+      }, 500);
+      debounceTimers.current.set(key, timer);
+    },
+    [config, onConfigChange],
+  );
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    const timers = debounceTimers.current;
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
+  // Health check handler
+  const handleHealthCheck = useCallback(async () => {
+    if (!apiKey) {
+      setHealthCheckError('Please set and save your API key before testing models.');
+      return;
+    }
+
+    setHealthCheckLoading(true);
+    setHealthCheckError(null);
+
+    try {
+      const res = await fetch('/api/models/health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const errMsg =
+          (data as Record<string, unknown>)?.error || `Request failed with status ${res.status}`;
+        setHealthCheckError(typeof errMsg === 'string' ? errMsg : 'Health check failed');
+        return;
+      }
+
+      const data = (await res.json()) as {
+        results: ModelHealthStatus[];
+        cached?: boolean;
+      };
+      setHealthResults(data.results);
+    } catch (err) {
+      setHealthCheckError(
+        err instanceof Error ? err.message : 'Failed to check model health',
+      );
+    } finally {
+      setHealthCheckLoading(false);
+    }
+  }, [apiKey]);
+
+  // Determine if currently selected generation model is unavailable
+  const currentGenHealth = healthResults?.find(r => r.modelId === config.generationModel);
+  const currentGenUnavailable = healthResults !== null && currentGenHealth && !currentGenHealth.available;
+
+  // Find first available recommended generation model
+  const recommendedAvailableModel = healthResults
+    ? GENERATION_MODELS.find(
+        m =>
+          m.isRecommended &&
+          healthResults.some(r => r.modelId === m.id && r.available),
+      )
+    : null;
+
+  // First available generation model (any, as fallback)
+  const firstAvailableGenModel = healthResults
+    ? GENERATION_MODELS.find(m =>
+        healthResults.some(r => r.modelId === m.id && r.available),
+      )
+    : null;
+
+  const handleSwitchToAvailable = () => {
+    const target = recommendedAvailableModel || firstAvailableGenModel;
+    if (target) {
+      updateConfig({ generationModel: target.id });
+    }
+  };
 
   const handleSaveKey = () => {
     setApiKey(displayKey);
@@ -185,7 +343,7 @@ export default function SettingsView({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="relative flex-1 max-w-md">
+              <div className="relative flex-1 max-w-md min-w-0">
                 <Key className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                 <Input
                   type={showKey ? 'text' : 'password'}
@@ -193,7 +351,7 @@ export default function SettingsView({
                   onChange={(e) => { if (!isEditingKey) { setIsEditingKey(true); setEditKey(e.target.value); } else { setEditKey(e.target.value); } setSaved(false); }}
                   onFocus={() => { if (!isEditingKey) { setIsEditingKey(true); setEditKey(apiKey); }}}
                   placeholder="Enter your Gemini API key"
-                  className="pl-8 pr-8"
+                  className="pl-8 pr-8 min-w-0"
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveKey()}
                 />
                 <button
@@ -287,6 +445,7 @@ export default function SettingsView({
                           <ImageIcon className="w-2.5 h-2.5" /> Multimodal
                         </Badge>
                       )}
+                      {getModelAvailabilityBadge(model.id, healthResults, model.isDeprecated)}
                     </div>
                   </motion.div>
                 ))}
@@ -342,9 +501,123 @@ export default function SettingsView({
                           <ImageIcon className="w-2.5 h-2.5" /> Multimodal
                         </Badge>
                       )}
+                      {getModelAvailabilityBadge(model.id, healthResults, model.isDeprecated)}
                     </div>
                   </motion.div>
                 ))}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Model Health Check */}
+            <div>
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Stethoscope className="w-3 h-3" /> Model Health Check
+              </h4>
+              <div className="space-y-3">
+                {!apiKey && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="text-xs text-amber-700 dark:text-amber-400">
+                      Please set and save your API key above before testing model availability.
+                    </span>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleHealthCheck}
+                  disabled={healthCheckLoading || !apiKey}
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                >
+                  {healthCheckLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Stethoscope className="w-3.5 h-3.5" />
+                  )}
+                  {healthCheckLoading ? 'Testing Models...' : 'Test Model Availability'}
+                </Button>
+
+                {healthCheckError && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                    <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <span className="text-xs text-red-700 dark:text-red-400">{healthCheckError}</span>
+                  </div>
+                )}
+
+                {/* Currently selected model unavailable warning */}
+                {currentGenUnavailable && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                        Your selected generation model ({selectedGenerationModel?.name || config.generationModel}) is currently unavailable.
+                      </p>
+                      {(recommendedAvailableModel || firstAvailableGenModel) && (
+                        <Button
+                          onClick={handleSwitchToAvailable}
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 gap-1.5 text-xs h-7 bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/60"
+                        >
+                          <ArrowRight className="w-3 h-3" />
+                          Switch to {(recommendedAvailableModel || firstAvailableGenModel)?.name}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Health check results table */}
+                {healthResults && !healthCheckLoading && (
+                  <div className="rounded-lg border border-border overflow-hidden">
+                    <div className="max-h-72 overflow-y-auto">
+                      <table className="w-full text-xs">
+                        <thead className="bg-muted/50 sticky top-0">
+                          <tr>
+                            <th className="text-left p-2 font-medium">Model</th>
+                            <th className="text-center p-2 font-medium">Status</th>
+                            <th className="text-right p-2 font-medium">Latency</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {healthResults.map((result) => {
+                            const model = [...EMBEDDING_MODELS, ...GENERATION_MODELS].find(
+                              m => m.id === result.modelId,
+                            );
+                            return (
+                              <tr key={result.modelId} className="border-t border-border">
+                                <td className="p-2">
+                                  <div className="font-medium truncate">{model?.name || result.modelId}</div>
+                                  <div className="text-[10px] text-muted-foreground font-mono truncate">{result.modelId}</div>
+                                </td>
+                                <td className="p-2 text-center">
+                                  {result.available ? (
+                                    <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                      <CheckCircle2 className="w-3.5 h-3.5" /> Available
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">
+                                      <XCircle className="w-3.5 h-3.5" /> Unavailable
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right tabular-nums">
+                                  {result.latencyMs !== null ? `${result.latencyMs}ms` : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="p-2 bg-muted/30 border-t border-border text-[10px] text-muted-foreground text-right">
+                      Tested at {healthResults[0] ? new Date(healthResults[0].testedAt).toLocaleTimeString() : 'N/A'}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -363,7 +636,7 @@ export default function SettingsView({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              <div className="min-w-0">
                 <label className="text-xs font-medium mb-1.5 block">Embedding Dimensions</label>
                 <Select
                   value={String(config.embeddingDimensions || 768)}
@@ -382,12 +655,12 @@ export default function SettingsView({
                     <SelectItem value="3072">3072 (Maximum — Gemini Embedding 2 full)</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-[10px] text-muted-foreground mt-1 block">
+                <span className="text-[10px] text-muted-foreground mt-1 block break-words">
                   Higher dimensions = better semantic understanding but more storage.
                   {selectedEmbeddingModel?.id === 'gemini-embedding-2' && ' Gemini Embedding 2 supports 128–3072 adjustable dimensions.'}
                 </span>
               </div>
-              <div>
+              <div className="min-w-0">
                 <label className="text-xs font-medium mb-1.5 block">Embedding Task Type</label>
                 <Select
                   value={config.embeddingTaskType || 'RETRIEVAL_DOCUMENT'}
@@ -404,7 +677,7 @@ export default function SettingsView({
                     <SelectItem value="CLUSTERING">Clustering</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-[10px] text-muted-foreground mt-1 block">
+                <span className="text-[10px] text-muted-foreground mt-1 block break-words">
                   Optimizes embeddings for the intended use case
                 </span>
               </div>
@@ -433,6 +706,9 @@ export default function SettingsView({
                     <span className="text-sm font-medium">Simulation Mode</span>
                   </div>
                   <button
+                    role="switch"
+                    aria-checked={simulationMode}
+                    aria-label="Toggle simulation mode"
                     onClick={() => setSimulationMode(!simulationMode)}
                     className={`relative w-10 h-5 rounded-full transition-colors ${
                       simulationMode ? 'bg-emerald-600' : 'bg-muted'
@@ -455,6 +731,9 @@ export default function SettingsView({
                     <span className="text-sm font-medium">Embedding Mode</span>
                   </div>
                   <button
+                    role="switch"
+                    aria-checked={useEmbeddings}
+                    aria-label="Toggle embedding mode"
                     onClick={() => setUseEmbeddings(!useEmbeddings)}
                     className={`relative w-10 h-5 rounded-full transition-colors ${
                       useEmbeddings ? 'bg-emerald-600' : 'bg-muted'
@@ -492,11 +771,16 @@ export default function SettingsView({
                   <label className="text-xs font-medium mb-1.5 block">Chunk Size (chars)</label>
                   <Input
                     type="number"
-                    value={config.chunkSize}
-                    onChange={(e) => updateConfig({ chunkSize: parseInt(e.target.value) || 800 })}
+                    value={localChunkSize}
+                    onChange={(e) => {
+                      setLocalChunkSize(e.target.value);
+                      const val = parseInt(e.target.value) || 800;
+                      debouncedUpdateConfig('chunkSize', { chunkSize: Math.min(2000, Math.max(200, val)) });
+                    }}
                     min={200}
                     max={2000}
                     step={100}
+                    className="w-full max-w-full"
                   />
                   <span className="text-[10px] text-muted-foreground mt-1 block">200–2000 characters per chunk</span>
                 </div>
@@ -504,11 +788,16 @@ export default function SettingsView({
                   <label className="text-xs font-medium mb-1.5 block">Overlap Size</label>
                   <Input
                     type="number"
-                    value={config.chunkOverlap}
-                    onChange={(e) => updateConfig({ chunkOverlap: parseInt(e.target.value) || 120 })}
+                    value={localChunkOverlap}
+                    onChange={(e) => {
+                      setLocalChunkOverlap(e.target.value);
+                      const val = parseInt(e.target.value) || 120;
+                      debouncedUpdateConfig('chunkOverlap', { chunkOverlap: Math.min(400, Math.max(20, val)) });
+                    }}
                     min={20}
                     max={400}
                     step={20}
+                    className="w-full max-w-full"
                   />
                   <span className="text-[10px] text-muted-foreground mt-1 block">20–400 characters overlap between chunks</span>
                 </div>
@@ -516,11 +805,16 @@ export default function SettingsView({
                   <label className="text-xs font-medium mb-1.5 block">Top-K Retrieval</label>
                   <Input
                     type="number"
-                    value={config.topK}
-                    onChange={(e) => updateConfig({ topK: parseInt(e.target.value) || 8 })}
+                    value={localTopK}
+                    onChange={(e) => {
+                      setLocalTopK(e.target.value);
+                      const val = parseInt(e.target.value) || 8;
+                      debouncedUpdateConfig('topK', { topK: Math.min(20, Math.max(1, val)) });
+                    }}
                     min={1}
                     max={20}
                     step={1}
+                    className="w-full max-w-full"
                   />
                   <span className="text-[10px] text-muted-foreground mt-1 block">Number of chunks to retrieve per query</span>
                 </div>

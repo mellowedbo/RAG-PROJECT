@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   BarChart3, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2,
-  Calculator, FileSpreadsheet, Brain, Sparkles, ArrowRight, Info,
-  Loader2, XCircle, RefreshCw, Search, Lightbulb, ShieldAlert,
+  Calculator, FileSpreadsheet, Brain, Sparkles, Info,
+  Loader2, XCircle, RefreshCw, Search, Lightbulb,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
-import type { FinancialRatio, AnalysisResult } from '@/types';
+import type { FinancialRatio } from '@/types';
 
 // Constants — Financial Data Input Fields
 
@@ -347,7 +348,7 @@ export default function AnalysisView({
   simulationMode,
   chunks,
   documents,
-  isProcessing,
+  isProcessing: _isProcessing,
   setIsProcessing,
 }: AnalysisViewProps) {
 
@@ -588,6 +589,7 @@ Return ONLY a JSON object with these fields (use 0 if not found, no extra text, 
     } finally {
       setIsParsingBS(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- tryParseBalanceSheetLocally and applyBalanceSheetAnalysis are stable callbacks; balanceSheetText already in deps
   }, [balanceSheetText, apiKey, generationModel, simulationMode]);
 
   // Local Balance Sheet Parsing Fallback
@@ -614,6 +616,7 @@ Return ONLY a JSON object with these fields (use 0 if not found, no extra text, 
       currentLiabilities: extractNumber('current liabilities'),
       longTermDebt: extractNumber('long.term debt|long.term liabilities|non-current liabilities'),
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- applyBalanceSheetAnalysis has stable identity (empty deps)
   }, [balanceSheetText]);
 
   // Apply Balance Sheet Analysis
@@ -907,7 +910,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
       setIsAnalyzing(false);
       setIsProcessing(false);
     }
-  }, [calculatedRatios, ratioStats, documents, financialData, apiKey, generationModel, simulationMode, setIsProcessing]);
+  }, [calculatedRatios, ratioStats, documents, financialData, apiKey, generationModel, simulationMode, setIsProcessing, generateOfflineSWOT]);
 
   // Handler: Load Sample Data
   const loadSampleData = useCallback(() => {
@@ -1043,9 +1046,19 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
         </Card>
       </motion.div>
 
+      {/* Standalone Mode Banner */}
+      {!apiKey && !simulationMode && (
+        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="text-xs text-amber-600 flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-500/20">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            AI Financial Advisor requires an API key. Ratio calculations and SWOT analysis work standalone.
+          </div>
+        </motion.div>
+      )}
+
       {/* Stats Row */}
       {calculatedRatios.length > 0 && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0">
           <Card>
             <CardContent className="p-3 text-center">
               <div className="text-2xl font-bold text-emerald-600">{ratioStats.total}</div>
@@ -1094,7 +1107,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
         <TabsContent value="calculator" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Input Panel */}
-            <div className="lg:col-span-1 space-y-4">
+            <div className="lg:col-span-1 space-y-4 min-w-0">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -1116,7 +1129,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                         </div>
                         <div className="space-y-2">
                           {FINANCIAL_INPUTS.filter(f => f.group === 'income').map(field => (
-                            <div key={field.key} className="space-y-1">
+                            <div key={field.key} className="space-y-1 min-w-0">
                               <Label className="text-[11px] font-medium">{field.label}</Label>
                               <Input
                                 type="number"
@@ -1125,7 +1138,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                                 placeholder={field.placeholder}
                                 value={financialData[field.key] || ''}
                                 onChange={e => updateInput(field.key, e.target.value)}
-                                className="h-8 text-xs"
+                                className="h-8 text-xs w-full max-w-full"
                               />
                             </div>
                           ))}
@@ -1142,7 +1155,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                         </div>
                         <div className="space-y-2">
                           {FINANCIAL_INPUTS.filter(f => f.group === 'balance').map(field => (
-                            <div key={field.key} className="space-y-1">
+                            <div key={field.key} className="space-y-1 min-w-0">
                               <Label className="text-[11px] font-medium">{field.label}</Label>
                               <Input
                                 type="number"
@@ -1151,7 +1164,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                                 placeholder={field.placeholder}
                                 value={financialData[field.key] || ''}
                                 onChange={e => updateInput(field.key, e.target.value)}
-                                className="h-8 text-xs"
+                                className="h-8 text-xs w-full max-w-full"
                               />
                             </div>
                           ))}
@@ -1168,7 +1181,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                         </div>
                         <div className="space-y-2">
                           {FINANCIAL_INPUTS.filter(f => f.group === 'market').map(field => (
-                            <div key={field.key} className="space-y-1">
+                            <div key={field.key} className="space-y-1 min-w-0">
                               <Label className="text-[11px] font-medium">{field.label}</Label>
                               <Input
                                 type="number"
@@ -1177,7 +1190,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                                 placeholder={field.placeholder}
                                 value={financialData[field.key] || ''}
                                 onChange={e => updateInput(field.key, e.target.value)}
-                                className="h-8 text-xs"
+                                className="h-8 text-xs w-full max-w-full"
                               />
                             </div>
                           ))}
@@ -1350,7 +1363,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
         <TabsContent value="balance-sheet" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Balance Sheet Input */}
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
@@ -1380,7 +1393,7 @@ EQUITY
   Shareholders' Equity: $120,000,000`}
                   value={balanceSheetText}
                   onChange={e => setBalanceSheetText(e.target.value)}
-                  className="min-h-[280px] text-xs font-mono resize-none"
+                  className="min-h-[280px] text-xs font-mono resize-none min-w-0"
                 />
                 <Button
                   onClick={parseBalanceSheet}

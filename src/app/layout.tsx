@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NEXUS — Agentic Intelligence for Finance",
+  title: "NEXUS — Financial Intelligence Platform",
   description:
     "A multi-agent retrieval-augmented generation platform for enterprise financial document analysis. From 10-K filings to earnings calls — agentic workflows that reason, retrieve, and synthesize at scale.",
   keywords: [
@@ -32,7 +32,8 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: "NEXUS Platform" }],
   icons: {
-    icon: "/logo.svg",
+    icon: '/logo.svg',
+    apple: '/logo.svg',
   },
 };
 

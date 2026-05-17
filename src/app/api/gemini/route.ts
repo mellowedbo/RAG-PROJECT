@@ -10,15 +10,17 @@ import { checkRateLimit } from '@/lib/rateLimit';
 // Model Fallback Chain
 
 const MODEL_FALLBACK_CHAIN: Record<string, string[]> = {
-  'gemini-2.5-pro-preview-05-06': ['gemini-2.5-flash-preview-05-20', 'gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-2.5-flash-preview-05-20': ['gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-2.0-flash': ['gemini-1.5-flash', 'gemini-2.0-flash-lite'],
-  'gemini-2.0-flash-lite': ['gemini-1.5-flash'],
-  'gemini-1.5-flash': ['gemini-2.0-flash-lite'],
-  'gemini-1.5-pro': ['gemini-1.5-flash', 'gemini-2.0-flash'],
-  'gemma-3-27b-it': ['gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemma-3-12b-it': ['gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemma-3-4b-it': ['gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.5-pro': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.5-flash': ['gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.5-pro-preview-05-06': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.5-flash-preview-05-20': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.0-flash': ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'],
+  'gemini-2.0-flash-lite': ['gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-1.5-flash': ['gemini-2.0-flash-lite', 'gemini-2.0-flash'],
+  'gemini-1.5-pro': ['gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash'],
+  'gemma-3-27b-it': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemma-3-12b-it': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemma-3-4b-it': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
 };
 
 /** Status codes that trigger a fallback to the next model */
@@ -36,6 +38,8 @@ export async function POST(request: NextRequest) {
       model,
       outputDimensionality,
       taskType,
+      temperature,
+      maxOutputTokens,
     } = body as {
       apiKey?: string;
       systemPrompt?: string;
@@ -45,6 +49,8 @@ export async function POST(request: NextRequest) {
       model?: string;
       outputDimensionality?: number;
       taskType?: string;
+      temperature?: number;
+      maxOutputTokens?: number;
     };
 
     // Rate limiting for demo key usage
@@ -132,7 +138,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User prompt is required' }, { status: 400 });
     }
 
-    const requestedModel = model || 'gemini-2.0-flash';
+    const requestedModel = model || 'gemini-2.5-flash';
     const fallbacks = MODEL_FALLBACK_CHAIN[requestedModel] || [];
     const modelsToTry = [requestedModel, ...fallbacks];
 
@@ -147,6 +153,29 @@ export async function POST(request: NextRequest) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey}`;
 
+        // Determine model-specific defaults for maxOutputTokens
+        const modelMaxTokens: Record<string, number> = {
+          'gemini-2.5-flash': 65536,
+          'gemini-2.5-pro': 65536,
+          'gemini-2.5-flash-preview-05-20': 65536,
+          'gemini-2.5-pro-preview-05-06': 65536,
+          'gemini-2.0-flash': 8192,
+          'gemini-2.0-flash-lite': 8192,
+          'gemini-1.5-flash': 8192,
+          'gemini-1.5-pro': 8192,
+          'gemma-3-27b-it': 8192,
+          'gemma-3-12b-it': 8192,
+          'gemma-3-4b-it': 8192,
+        };
+
+        const resolvedTemperature = typeof temperature === 'number' && temperature >= 0 && temperature <= 2
+          ? temperature
+          : 0.7; // Default 0.7 for financial analysis — more deterministic
+
+        const resolvedMaxOutputTokens = typeof maxOutputTokens === 'number' && maxOutputTokens > 0
+          ? Math.min(maxOutputTokens, modelMaxTokens[currentModel] || 8192)
+          : modelMaxTokens[currentModel] || 8192;
+
         const geminiBody: Record<string, unknown> = {
           contents: [
             {
@@ -155,10 +184,10 @@ export async function POST(request: NextRequest) {
             },
           ],
           generationConfig: {
-            temperature: 1.0,
+            temperature: resolvedTemperature,
             topP: 0.95,
             topK: 64,
-            maxOutputTokens: 8192,
+            maxOutputTokens: resolvedMaxOutputTokens,
           },
         };
 

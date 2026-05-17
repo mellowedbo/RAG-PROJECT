@@ -6,6 +6,7 @@ import {
   BookOpen, Plus, Sparkles, ScanSearch, AlertTriangle, CheckCircle2,
   XCircle, ChevronDown, ChevronUp, Trash2, Loader2, FileSpreadsheet,
   Brain, Info, ShieldAlert, MessageSquareQuote, Lightbulb, ArrowRightLeft,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
@@ -324,7 +324,7 @@ export default function AccountingView({
   apiKey,
   generationModel,
   simulationMode,
-  isProcessing,
+  isProcessing: _isProcessing,
   setIsProcessing,
   chunks,
 }: AccountingViewProps) {
@@ -408,7 +408,7 @@ export default function AccountingView({
       const amountMatch = nlInput.match(/[\$₹]?\s*([\d,]+(?:\.\d+)?)/);
       const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
 
-      const isCash = nlInput.toLowerCase().includes('cash');
+      const _isCash = nlInput.toLowerCase().includes('cash');
       const isBank = nlInput.toLowerCase().includes('cheque') || nlInput.toLowerCase().includes('bank') || nlInput.toLowerCase().includes('transfer');
       const isCredit = nlInput.toLowerCase().includes('credit') || nlInput.toLowerCase().includes('on credit');
 
@@ -526,7 +526,7 @@ Rules:
       const amountMatch = nlInput.match(/[\$₹]?\s*([\d,]+(?:\.\d+)?)/);
       const amount = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
       if (amount > 0) {
-        const isCash = nlInput.toLowerCase().includes('cash');
+        const _isCash = nlInput.toLowerCase().includes('cash');
         const isBank = nlInput.toLowerCase().includes('cheque') || nlInput.toLowerCase().includes('bank');
         let debitAccount = 'Cash';
         let creditAccount = 'Revenue';
@@ -604,6 +604,8 @@ Rules:
     }
 
     // Compute health score
+    const criticalCount = issues.filter(i => i.severity === 'critical').length;
+    const warningCount = issues.filter(i => i.severity === 'warning').length;
     let healthScore = 50; // Base score
     if (balanced) healthScore += 25; // Trial balance is balanced
     else healthScore -= 20;
@@ -704,7 +706,7 @@ Rules:
     md += `\n*This is a rule-based analysis. Add a Gemini API key for AI-powered insights with contextual understanding.*\n`;
 
     return md;
-  }, [journalEntries, trialBalance, issues, criticalCount, warningCount]);
+  }, [journalEntries, trialBalance, issues]);
 
   // RAG Document Search
   const handleRAGSearch = useCallback(() => {
@@ -712,15 +714,31 @@ Rules:
     setIsRagSearching(true);
     setShowRagResults(true);
 
-    // Search for accounting-related chunks using keyword matching
-    const accountingKeywords = ['accounting', 'journal', 'ledger', 'debit', 'credit', 'balance', 'trial balance', 'entry', 'bookkeeping', 'revenue', 'expense', 'asset', 'liability', 'equity', 'income', 'profit', 'loss', 'gst', 'tax', 'depreciation', 'audit', 'financial statement', 'ind as', 'gaap'];
+    // Search for accounting-related chunks using keyword matching with expanded terms
+    const accountingKeywords = [
+      'accounting', 'journal', 'ledger', 'debit', 'credit', 'balance', 'trial balance',
+      'entry', 'bookkeeping', 'revenue', 'expense', 'asset', 'liability', 'equity',
+      'income', 'profit', 'loss', 'gst', 'tax', 'depreciation', 'audit',
+      'financial statement', 'ind as', 'gaap',
+      // Accounting-specific terms added
+      'receivable', 'payable', 'accounts receivable', 'accounts payable',
+      'contra', 'posting', 'double entry', 'general ledger', 'subsidiary',
+      'accrual', 'cash basis', 'prepaid', 'outstanding', 'provision',
+      'amortization', 'impairment', 'reconciliation', 'adjusting entry',
+      'closing entry', 'opening balance', 'carrying value', 'write off',
+      'bad debt', 'allowance', 'inventory valuation', 'fifo', 'lifo',
+      'working capital', 'current ratio', 'quick ratio',
+    ];
     const entryKeywords = journalEntries.flatMap(e => [e.debitAccount.toLowerCase(), e.creditAccount.toLowerCase(), e.description.toLowerCase()]);
 
     const scored = chunks.map(chunk => {
       const lower = chunk.content.toLowerCase();
       let score = 0;
       for (const kw of accountingKeywords) {
-        if (lower.includes(kw)) score += 2;
+        // Count occurrences for better scoring (TF-IDF-like)
+        const regex = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const matches = lower.match(regex);
+        if (matches) score += matches.length * 2;
       }
       for (const kw of entryKeywords) {
         if (lower.includes(kw)) score += 3;
@@ -851,7 +869,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
       setIsAnalyzing(false);
       setIsProcessing(false);
     }
-  }, [journalEntries, trialBalance, issues, apiKey, generationModel, simulationMode, setIsProcessing, chunks]);
+  }, [journalEntries, trialBalance, issues, apiKey, generationModel, simulationMode, setIsProcessing, chunks, generateOfflineAnalysis]);
 
   // Clear All
   const clearAll = useCallback(() => {
@@ -912,6 +930,16 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           </CardHeader>
         </Card>
       </motion.div>
+
+      {/* Standalone Mode Banner */}
+      {!apiKey && !simulationMode && (
+        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }}>
+          <div className="text-xs text-amber-600 flex items-center gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-500/20">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            AI Analysis requires an API key. Journal entries, trial balance, and issue scanning work without an API key.
+          </div>
+        </motion.div>
+      )}
 
       {/* Stats Row */}
       {journalEntries.length > 0 && (
@@ -988,17 +1016,17 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Date */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <Label className="text-xs font-medium">Date</Label>
                   <Input
                     type="date"
                     value={formDate}
                     onChange={e => setFormDate(e.target.value)}
-                    className="h-9 text-sm"
+                    className="h-9 text-sm w-full max-w-full"
                   />
                 </div>
                 {/* Amount */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <Label className="text-xs font-medium">Amount (₹)</Label>
                   <Input
                     type="number"
@@ -1007,30 +1035,30 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                     placeholder="e.g. 5000"
                     value={formAmount}
                     onChange={e => setFormAmount(e.target.value)}
-                    className="h-9 text-sm"
+                    className="h-9 text-sm w-full max-w-full"
                   />
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label className="text-xs font-medium">Description</Label>
                 <Input
                   placeholder="e.g. Rent payment for March 2025"
                   value={formDesc}
                   onChange={e => setFormDesc(e.target.value)}
-                  className="h-9 text-sm"
+                  className="h-9 text-sm w-full max-w-full"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {/* Debit Account */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <Label className="text-xs font-medium flex items-center gap-1">
                     <ArrowRightLeft className="w-3 h-3 text-emerald-600" />
                     Debit Account (Dr)
                   </Label>
                   <Select value={formDebit} onValueChange={setFormDebit}>
-                    <SelectTrigger className="h-9 text-sm">
+                    <SelectTrigger className="h-9 text-sm min-w-0">
                       <SelectValue placeholder="Select debit account" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1046,13 +1074,13 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                   </Select>
                 </div>
                 {/* Credit Account */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 min-w-0">
                   <Label className="text-xs font-medium flex items-center gap-1">
                     <ArrowRightLeft className="w-3 h-3 text-amber-500" />
                     Credit Account (Cr)
                   </Label>
                   <Select value={formCredit} onValueChange={setFormCredit}>
-                    <SelectTrigger className="h-9 text-sm">
+                    <SelectTrigger className="h-9 text-sm min-w-0">
                       <SelectValue placeholder="Select credit account" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1069,13 +1097,13 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <Label className="text-xs font-medium">Narration (Optional)</Label>
                 <Input
                   placeholder="e.g. Being rent paid for office premises for the month of March"
                   value={formNarration}
                   onChange={e => setFormNarration(e.target.value)}
-                  className="h-9 text-sm"
+                  className="h-9 text-sm w-full max-w-full"
                 />
               </div>
 
@@ -1106,7 +1134,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                 placeholder="e.g. Record rent payment of ₹2,000 by cheque"
                 value={nlInput}
                 onChange={e => setNlInput(e.target.value)}
-                className="min-h-[80px] text-sm resize-none"
+                className="min-h-[80px] text-sm resize-none min-w-0"
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey && nlInput.trim()) {
                     e.preventDefault();
@@ -1135,7 +1163,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                     <button
                       key={i}
                       onClick={() => setNlInput(prompt)}
-                      className="text-[10px] px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                      className="text-[10px] px-2 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors text-wrap break-words max-w-[260px]"
                     >
                       {prompt.length > 40 ? prompt.slice(0, 40) + '...' : prompt}
                     </button>
@@ -1144,9 +1172,51 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        {/* Tab: Journal Entries List */}
+          {/* Search Accounting Documents */}
+          {chunks.length > 0 && (
+            <Card className="border-emerald-600/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <ScanSearch className="w-4 h-4 text-emerald-600" />
+                  Search Accounting Documents
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Search your uploaded documents for accounting data — debit, credit, journal, ledger, receivable, payable &amp; more
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={handleRAGSearch}
+                  disabled={isRagSearching}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                  size="sm"
+                >
+                  {isRagSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : <ScanSearch className="w-3 h-3" />}
+                  {isRagSearching ? 'Searching Documents...' : 'Search Accounting Documents'}
+                </Button>
+                {showRagResults && ragChunks.length > 0 && (
+                  <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border">
+                    <div className="text-[11px] font-medium text-emerald-600 mb-2">
+                      Found {ragChunks.length} matching chunks
+                    </div>
+                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                      {ragChunks.slice(0, 5).map((chunk, i) => (
+                        <div key={i} className="p-2 rounded border border-border bg-background text-[10px] text-muted-foreground leading-relaxed break-words">
+                          {chunk.section && <Badge variant="outline" className="text-[8px] h-3.5 mr-1">{chunk.section}</Badge>}
+                          {chunk.content.slice(0, 150)}{chunk.content.length > 150 ? '...' : ''}
+                        </div>
+                      ))}
+                    </div>
+                    {ragChunks.length > 5 && (
+                      <div className="text-[10px] text-muted-foreground mt-1.5">+{ragChunks.length - 5} more results in the Analysis tab</div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
         <TabsContent value="entries" className="space-y-4 mt-4">
           {journalEntries.length === 0 ? (
             <Card>
@@ -1313,15 +1383,15 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
                                         )}
 
                                         {/* Accounting entry visualization */}
-                                        <div className="grid grid-cols-2 gap-3 p-2 bg-muted/30 rounded-md">
-                                          <div>
+                                        <div className="grid grid-cols-2 gap-3 p-2 bg-muted/30 rounded-md min-w-0">
+                                          <div className="min-w-0 overflow-hidden">
                                             <span className="text-[10px] text-muted-foreground">Debit (Dr)</span>
-                                            <p className="text-xs font-semibold text-emerald-600">{entry.debitAccount}</p>
+                                            <p className="text-xs font-semibold text-emerald-600 truncate">{entry.debitAccount}</p>
                                             <p className="text-sm font-bold font-mono">{formatCurrency(entry.amount)}</p>
                                           </div>
-                                          <div>
+                                          <div className="min-w-0 overflow-hidden">
                                             <span className="text-[10px] text-muted-foreground">Credit (Cr)</span>
-                                            <p className="text-xs font-semibold text-amber-600">{entry.creditAccount}</p>
+                                            <p className="text-xs font-semibold text-amber-600 truncate">{entry.creditAccount}</p>
                                             <p className="text-sm font-bold font-mono">{formatCurrency(entry.amount)}</p>
                                           </div>
                                         </div>
@@ -1422,7 +1492,7 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           {issues.length > 0 && !isScanning && (
             <>
               {/* Issue stats */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3 min-w-0">
                 <Card className="border-red-500/20">
                   <CardContent className="p-3 text-center">
                     <div className="text-2xl font-bold text-red-500">{criticalCount}</div>

@@ -39,7 +39,7 @@ export function saveChunksToHot(chunks: ChunkInfo[]): void {
     console.warn('localStorage write failed (chunks):', e);
     // If quota exceeded, try saving without embeddings
     try {
-      const slim = chunks.map(({ embedding, ...rest }) => rest);
+      const slim = chunks.map(({ embedding: _embedding, ...rest }) => rest);
       localStorage.setItem(HOT_CHUNKS_KEY, JSON.stringify(slim));
     } catch {
       console.error('localStorage write failed even without embeddings');

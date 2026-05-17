@@ -53,7 +53,7 @@ function makeInitialSteps(): AgentStep[] {
 // Unique ID helper
 
 function uid(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return crypto.randomUUID();
 }
 
 // Document type detection
@@ -81,6 +81,20 @@ function detectSector(filename: string): string | null {
   if (lower.includes('energy') || lower.includes('oil') || lower.includes('petro'))
     return 'Energy & Utilities';
   return null;
+}
+
+// Activity Log Helper
+
+function logActivity(type: 'query' | 'upload' | 'journal', description: string) {
+  try {
+    const raw = localStorage.getItem('nexus-activity-log');
+    const log: { type: string; description: string; timestamp: string }[] = raw ? JSON.parse(raw) : [];
+    log.push({ type, description, timestamp: new Date().toISOString() });
+    const trimmed = log.slice(-50);
+    localStorage.setItem('nexus-activity-log', JSON.stringify(trimmed));
+  } catch {
+    // Silently fail — activity logging is non-critical
+  }
 }
 
 // useRAGPipeline Hook
@@ -121,6 +135,15 @@ export function useRAGPipeline() {
 
   // Refs
   const vectorDBRef = useRef<MemoryVectorDB>(new MemoryVectorDB());
+
+  // Internal Helpers (defined first to avoid temporal dead zone)
+
+  const clearQueryState = useCallback(() => {
+    setQueryResult('');
+    setCitedChunks([]);
+    setMetrics(null);
+    setAgentSteps(makeInitialSteps());
+  }, []);
 
   // Mode Switching
 
@@ -170,7 +193,7 @@ export function useRAGPipeline() {
         vectorDBRef.current = db;
       }
     },
-    [config.embeddingDimensions]
+    [config.embeddingDimensions, clearQueryState]
   );
 
   // API Key
@@ -190,17 +213,8 @@ export function useRAGPipeline() {
     });
   }, []);
 
-  // Internal Helpers
-
-  const clearQueryState = useCallback(() => {
-    setQueryResult('');
-    setCitedChunks([]);
-    setMetrics(null);
-    setAgentSteps(makeInitialSteps());
-  }, []);
-
   /** Persist documents + chunks to localStorage (test mode only) */
-  const persistToStorage = useCallback(() => {
+  const _persistToStorage = useCallback(() => {
     if (mode === 'test') {
       saveDocsToHot(documents);
       saveChunksToHot(chunks);
@@ -208,9 +222,9 @@ export function useRAGPipeline() {
   }, [mode, documents, chunks]);
 
   /** Rebuild vector DB from current chunks that have embeddings */
-  const rebuildVectorDB = useCallback((currentChunks: ChunkInfo[]) => {
+  const _rebuildVectorDB = useCallback((_currentChunks: ChunkInfo[]) => {
     const db = new MemoryVectorDB();
-    const withEmbeddings = currentChunks.filter(
+    const withEmbeddings = _currentChunks.filter(
       (c) => c.embedding && c.embedding.length > 0
     );
     if (withEmbeddings.length > 0) {
@@ -273,6 +287,9 @@ export function useRAGPipeline() {
         saveDocsToHot([...documents, docInfo]);
         saveChunksToHot([...chunks, ...embeddedChunks]);
       }
+
+      // Log activity
+      logActivity('upload', docInfo.title);
 
       return embeddedChunks;
     },
@@ -636,6 +653,9 @@ ${context}`;
           totalLatencyMs: Math.round(performance.now() - pipelineStart),
           confidenceScore: computeConfidence(retrievedChunks),
         });
+
+        // Log activity
+        logActivity('query', query.slice(0, 80));
       } catch (err) {
         const message =
           err instanceof Error ? err.message : 'Query pipeline failed';

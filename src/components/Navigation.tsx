@@ -20,8 +20,7 @@ import {
 } from '@/components/ui/select';
 import type { AppMode } from '@/types';
 
-// API Key Input
-
+/** Gemini API key input with show/hide toggle and localStorage persistence */
 function ApiKeyInput({
   apiKey,
   setApiKey,
@@ -75,8 +74,6 @@ function ApiKeyInput({
     </div>
   );
 }
-
-// Navigation
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();

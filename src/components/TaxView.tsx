@@ -5,8 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   IndianRupee, Calculator, Receipt, Search, TrendingDown,
   ArrowRight, CheckCircle2, AlertCircle, Info, Sparkles,
-  Send, Loader2, ChevronDown, ChevronUp, X, Key, MessageSquare,
-  Lightbulb,
+  Send, Loader2, ChevronDown, ChevronUp, X, MessageSquare,
+  Lightbulb, FileText, FolderOpen,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,9 +65,7 @@ function formatINR(amount: number): string {
   return (isNegative ? '-' : '') + '₹' + result;
 }
 
-function formatPercent(rate: number): string {
-  return `${rate}%`;
-}
+// (formatPercent removed — inline formatting used instead)
 
 // Income Tax Calculation Engine
 
@@ -516,7 +514,7 @@ function IncomeTaxTab() {
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Annual Income */}
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <label className="text-xs font-medium text-muted-foreground">Annual Income (₹)</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -524,7 +522,7 @@ function IncomeTaxTab() {
                     type="number"
                     value={annualIncome}
                     onChange={(e) => setAnnualIncome(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 w-full max-w-full"
                     placeholder="12,00,000"
                   />
                 </div>
@@ -600,7 +598,7 @@ function IncomeTaxTab() {
                       </div>
                       <div className="relative">
                         <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input type="number" value={deductions80C} onChange={(e) => setDeductions80C(e.target.value)} className="pl-9 h-9 text-sm" />
+                        <Input type="number" value={deductions80C} onChange={(e) => setDeductions80C(e.target.value)} className="pl-9 h-9 text-sm w-full max-w-full" />
                       </div>
                     </div>
                     <div className="space-y-1.5">
@@ -615,21 +613,21 @@ function IncomeTaxTab() {
                       </div>
                       <div className="relative">
                         <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input type="number" value={deductions80D} onChange={(e) => setDeductions80D(e.target.value)} className="pl-9 h-9 text-sm" />
+                        <Input type="number" value={deductions80D} onChange={(e) => setDeductions80D(e.target.value)} className="pl-9 h-9 text-sm w-full max-w-full" />
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs text-muted-foreground">HRA Exemption</label>
                       <div className="relative">
                         <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input type="number" value={hraExemption} onChange={(e) => setHraExemption(e.target.value)} className="pl-9 h-9 text-sm" />
+                        <Input type="number" value={hraExemption} onChange={(e) => setHraExemption(e.target.value)} className="pl-9 h-9 text-sm w-full max-w-full" />
                       </div>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs text-muted-foreground">Other Deductions (80E, 80G, 80TTA etc.)</label>
                       <div className="relative">
                         <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <Input type="number" value={otherDeductions} onChange={(e) => setOtherDeductions(e.target.value)} className="pl-9 h-9 text-sm" />
+                        <Input type="number" value={otherDeductions} onChange={(e) => setOtherDeductions(e.target.value)} className="pl-9 h-9 text-sm w-full max-w-full" />
                       </div>
                     </div>
                   </motion.div>
@@ -680,8 +678,8 @@ function IncomeTaxTab() {
                       : `Consider switching to ${result.comparison.betterRegime === 'old' ? 'Old' : 'New'} Regime`}
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className={`p-3 rounded-lg border ${result.comparison.betterRegime === 'old' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border'}`}>
+                <div className="grid grid-cols-3 gap-3 min-w-0">
+                  <div className={`p-3 rounded-lg border min-w-0 ${result.comparison.betterRegime === 'old' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border'}`}>
                     <div className="text-[10px] text-muted-foreground mb-1">Old Regime</div>
                     <div className={`text-sm font-bold ${result.comparison.betterRegime === 'old' ? 'text-emerald-600' : ''}`}>
                       {formatINR(result.comparison.oldRegimeTax)}
@@ -690,7 +688,7 @@ function IncomeTaxTab() {
                       <Badge className="mt-1 text-[9px] h-4 bg-emerald-600">Best</Badge>
                     )}
                   </div>
-                  <div className={`p-3 rounded-lg border ${result.comparison.betterRegime === 'new' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border'}`}>
+                  <div className={`p-3 rounded-lg border min-w-0 ${result.comparison.betterRegime === 'new' ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border'}`}>
                     <div className="text-[10px] text-muted-foreground mb-1">New Regime</div>
                     <div className={`text-sm font-bold ${result.comparison.betterRegime === 'new' ? 'text-emerald-600' : ''}`}>
                       {formatINR(result.comparison.newRegimeTax)}
@@ -699,7 +697,7 @@ function IncomeTaxTab() {
                       <Badge className="mt-1 text-[9px] h-4 bg-emerald-600">Best</Badge>
                     )}
                   </div>
-                  <div className="p-3 rounded-lg border border-border">
+                  <div className="p-3 rounded-lg border border-border min-w-0">
                     <div className="text-[10px] text-muted-foreground mb-1">You Save</div>
                     <div className="text-sm font-bold text-emerald-600">{formatINR(result.comparison.savings)}</div>
                     <div className="text-[9px] text-muted-foreground">with {result.comparison.betterRegime === 'old' ? 'Old' : 'New'} Regime</div>
@@ -901,7 +899,7 @@ function GSTTab() {
               <CardDescription className="text-xs">Calculate CGST, SGST & IGST</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 min-w-0">
                 <label className="text-xs font-medium text-muted-foreground">Amount (₹)</label>
                 <div className="relative">
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -909,7 +907,7 @@ function GSTTab() {
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 w-full max-w-full"
                     placeholder="10,000"
                   />
                 </div>
@@ -1010,51 +1008,51 @@ function GSTTab() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="p-3 rounded-lg border border-border text-center">
+                  <div className="grid grid-cols-3 gap-3 min-w-0">
+                    <div className="p-3 rounded-lg border border-border text-center min-w-0">
                       <div className="text-[10px] text-muted-foreground mb-1">Base Amount</div>
-                      <div className="text-sm font-bold font-mono">{formatINR(result.baseAmount)}</div>
+                      <div className="text-sm font-bold font-mono break-words">{formatINR(result.baseAmount)}</div>
                     </div>
-                    <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-center">
+                    <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-center min-w-0">
                       <div className="text-[10px] text-muted-foreground mb-1">GST Amount</div>
-                      <div className="text-sm font-bold font-mono text-emerald-600">{formatINR(result.gstAmount)}</div>
+                      <div className="text-sm font-bold font-mono text-emerald-600 break-words">{formatINR(result.gstAmount)}</div>
                     </div>
-                    <div className="p-3 rounded-lg border border-border text-center">
+                    <div className="p-3 rounded-lg border border-border text-center min-w-0">
                       <div className="text-[10px] text-muted-foreground mb-1">Total Amount</div>
-                      <div className="text-sm font-bold font-mono">{formatINR(result.totalAmount)}</div>
+                      <div className="text-sm font-bold font-mono break-words">{formatINR(result.totalAmount)}</div>
                     </div>
                   </div>
 
                   <Separator />
 
                   <div className="text-xs font-semibold text-muted-foreground">Tax Split</div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-3 min-w-0">
                     {gstType === 'cgst_sgst' ? (
                       <>
-                        <div className="p-3 rounded-lg border border-border text-center">
+                        <div className="p-3 rounded-lg border border-border text-center min-w-0">
                           <div className="text-[10px] text-muted-foreground mb-1">CGST ({result.rate / 2}%)</div>
                           <div className="text-sm font-bold font-mono">{formatINR(result.cgst)}</div>
                         </div>
-                        <div className="p-3 rounded-lg border border-border text-center">
+                        <div className="p-3 rounded-lg border border-border text-center min-w-0">
                           <div className="text-[10px] text-muted-foreground mb-1">SGST ({result.rate / 2}%)</div>
                           <div className="text-sm font-bold font-mono">{formatINR(result.sgst)}</div>
                         </div>
-                        <div className="p-3 rounded-lg border border-border text-center opacity-50">
+                        <div className="p-3 rounded-lg border border-border text-center opacity-50 min-w-0">
                           <div className="text-[10px] text-muted-foreground mb-1">IGST</div>
                           <div className="text-sm font-bold font-mono">—</div>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="p-3 rounded-lg border border-border text-center opacity-50">
+                        <div className="p-3 rounded-lg border border-border text-center opacity-50 min-w-0">
                           <div className="text-[10px] text-muted-foreground mb-1">CGST</div>
                           <div className="text-sm font-bold font-mono">—</div>
                         </div>
-                        <div className="p-3 rounded-lg border border-border text-center opacity-50">
+                        <div className="p-3 rounded-lg border border-border text-center opacity-50 min-w-0">
                           <div className="text-[10px] text-muted-foreground mb-1">SGST</div>
                           <div className="text-sm font-bold font-mono">—</div>
                         </div>
-                        <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-center">
+                        <div className="p-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 text-center min-w-0">
                           <div className="text-[10px] text-muted-foreground mb-1">IGST ({result.rate}%)</div>
                           <div className="text-sm font-bold font-mono text-emerald-600">{formatINR(result.igst)}</div>
                         </div>
@@ -1277,6 +1275,18 @@ function TDSTab() {
 
 // AI Tax Assistant Tab
 
+// Tax-related keywords for TF-IDF-like scoring (module-level constant to avoid re-creation on every render)
+const TAX_KEYWORDS = [
+  'tax', 'income tax', 'gst', 'tds', 'slab', 'deduction', 'exemption', 'regime',
+  'section 80c', 'section 80d', '80c', '80d', '80e', '80g', '80tta', '80ttb',
+  'capital gains', 'surcharge', 'cess', 'rebate', '87a', 'pan', 'itr', 'return',
+  'hra', 'pf', 'epf', 'ppf', 'elss', 'nps', 'nsc', 'lic',
+  'cgst', 'sgst', 'igst', 'input tax credit', 'itc', 'reverse charge',
+  'withholding', 'advance tax', 'self-assessment', 'tax audit', 'form 16',
+  'form 26as', 'tcs', 'dtaa', 'residential status', 'assessment year',
+  'financial year', 'fiscal', 'compliance', 'penalty', 'interest',
+];
+
 interface AIAssistantTabProps {
   apiKey: string;
   generationModel: string;
@@ -1291,12 +1301,15 @@ function AIAssistantTab({
   generationModel,
   simulationMode,
   chunks,
-  isProcessing,
+  isProcessing: _isProcessing,
   setIsProcessing,
 }: AIAssistantTabProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [taxDocChunks, setTaxDocChunks] = useState<{ content: string; section: string | null; documentId: string; score: number }[]>([]);
+  const [isSearchingDocs, setIsSearchingDocs] = useState(false);
+  const [showTaxDocResults, setShowTaxDocResults] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const sampleQuestions = [
@@ -1318,6 +1331,53 @@ function AIAssistantTab({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Search tax-related chunks using TF-IDF-like scoring
+  const searchTaxChunks = useCallback((query?: string) => {
+    setIsSearchingDocs(true);
+    setShowTaxDocResults(true);
+
+    const queryTerms = query ? query.toLowerCase().split(/\s+/).filter(t => t.length > 2) : [];
+
+    const scored = chunks.map(chunk => {
+      const lower = chunk.content.toLowerCase();
+      let score = 0;
+
+      // Score based on tax keyword presence
+      for (const kw of TAX_KEYWORDS) {
+        const regex = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const matches = lower.match(regex);
+        if (matches) {
+          score += matches.length * 2; // TF component
+        }
+      }
+
+      // Boost score if query terms match
+      for (const term of queryTerms) {
+        const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const matches = lower.match(regex);
+        if (matches) {
+          score += matches.length * 3;
+        }
+      }
+
+      // Penalize very long chunks (IDF-like normalization)
+      const lengthPenalty = Math.log(chunk.content.length / 500 + 1);
+      score = score / lengthPenalty;
+
+      return { chunk, score };
+    }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 8);
+
+    const results = scored.map(s => ({
+      content: s.chunk.content,
+      section: s.chunk.section,
+      documentId: s.chunk.documentId,
+      score: Math.round(s.score * 10) / 10,
+    }));
+
+    setTaxDocChunks(results);
+    setIsSearchingDocs(false);
+  }, [chunks]);
+
   const handleSend = async (question?: string) => {
     const q = question || input.trim();
     if (!q) return;
@@ -1329,17 +1389,43 @@ function AIAssistantTab({
     setIsProcessing(true);
 
     try {
-      // Build context from available chunks
-      const relevantChunks = chunks
-        .slice(0, 8)
-        .map((c, i) => `[Source ${i + 1}${c.section ? ` | ${c.section}` : ''}]: ${c.content.slice(0, 300)}`)
-        .join('\n\n');
+      // Search for tax-relevant chunks using TF-IDF scoring
+      const queryTerms = q.toLowerCase().split(/\s+/).filter(t => t.length > 2);
+      const scoredChunks = chunks.map(chunk => {
+        const lower = chunk.content.toLowerCase();
+        let score = 0;
+
+        for (const kw of TAX_KEYWORDS) {
+          const regex = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+          const matches = lower.match(regex);
+          if (matches) score += matches.length * 2;
+        }
+
+        for (const term of queryTerms) {
+          const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+          const matches = lower.match(regex);
+          if (matches) score += matches.length * 3;
+        }
+
+        const lengthPenalty = Math.log(chunk.content.length / 500 + 1);
+        score = score / lengthPenalty;
+
+        return { chunk, score };
+      }).filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 6);
+
+      const relevantChunks = scoredChunks.length > 0
+        ? scoredChunks.map((s, i) => `[Source ${i + 1}${s.chunk.section ? ` | ${s.chunk.section}` : ''} | Relevance: ${Math.round(s.score)}]: ${s.chunk.content.slice(0, 400)}`).join('\n\n')
+        : chunks.slice(0, 4).map((c, i) => `[Source ${i + 1}${c.section ? ` | ${c.section}` : ''}]: ${c.content.slice(0, 300)}`).join('\n\n');
+
+      const hasTaxContext = scoredChunks.length > 0;
 
       const systemPrompt = `You are NEXUS Tax Assistant, an expert in Indian taxation (FY 2024-25). You specialize in:
 - Income Tax (Old & New Regime), deductions, exemptions, slab rates
 - GST (CGST, SGST, IGST), rates, compliance
 - TDS rates, sections, thresholds
 - Indian financial regulations and compliance
+
+${hasTaxContext ? `**IMPORTANT: The user has uploaded financial documents containing tax-related information. Use the provided document excerpts as primary context for your answer. Reference specific document sources when citing information.**` : 'No specific document context is available. Provide general tax guidance.'}
 
 RULES:
 1. Provide accurate, up-to-date Indian tax information only
@@ -1348,7 +1434,8 @@ RULES:
 4. If asked about a specific document, reference the provided context
 5. If information is insufficient, say so clearly
 6. Add disclaimers where appropriate (e.g., "consult a CA")
-7. Be concise but thorough`;
+7. Be concise but thorough
+8. When document excerpts are provided, prioritize information from those documents over general knowledge`;
 
       const userPrompt = relevantChunks
         ? `Based on the following financial document excerpts:\n\n${relevantChunks}\n\nUser Question: ${q}`
@@ -1361,9 +1448,19 @@ RULES:
         const assistantMessage: ChatMessage = { role: 'assistant', content: simResponse, timestamp: new Date() };
         setMessages(prev => [...prev, assistantMessage]);
       } else if (!apiKey) {
-        // Offline: provide rule-based response from the question
+        // Offline: provide rule-based response + document tax analysis fallback
         await new Promise(resolve => setTimeout(resolve, 800));
-        const offlineResponse = generateOfflineTaxResponse(q);
+        let offlineResponse = generateOfflineTaxResponse(q);
+
+        // If tax-relevant document chunks exist, append them as "Document Tax Analysis"
+        if (scoredChunks.length > 0) {
+          offlineResponse += `\n\n---\n📄 **Document Tax Analysis** (from your uploaded documents):\n\n`;
+          scoredChunks.slice(0, 4).forEach((s, i) => {
+            offlineResponse += `**Source ${i + 1}${s.chunk.section ? ` — ${s.chunk.section}` : ''}:**\n> ${s.chunk.content.slice(0, 250)}${s.chunk.content.length > 250 ? '...' : ''}\n\n`;
+          });
+          offlineResponse += `*These excerpts were found by searching your documents for tax-related content.*`;
+        }
+
         const assistantMessage: ChatMessage = { role: 'assistant', content: offlineResponse, timestamp: new Date() };
         setMessages(prev => [...prev, assistantMessage]);
       } else {
@@ -1439,8 +1536,8 @@ RULES:
             <CardContent className="flex-1 flex flex-col">
               {!apiKey && !simulationMode && (
                 <div className="text-xs text-amber-600 flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-500/20 mb-3">
-                  <Lightbulb className="w-3.5 h-3.5 shrink-0" />
-                  Calculators and rule-based tax advice work without an API key. Add a Gemini key for personalized AI insights.
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  AI Tax Advisor requires an API key. Use the calculators below for standalone tax computation.
                 </div>
               )}
 
@@ -1513,7 +1610,7 @@ RULES:
                   onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSend()}
                   placeholder="Ask about income tax, GST, TDS, deductions..."
                   disabled={isLoading}
-                  className="flex-1"
+                  className="flex-1 min-w-0"
                 />
                 <Button
                   onClick={() => handleSend()}
@@ -1576,6 +1673,138 @@ RULES:
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Search Tax Documents Button */}
+        {chunks.length > 0 && (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xs flex items-center gap-2">
+                  <Search className="w-3.5 h-3.5 text-emerald-600" />
+                  Search Tax Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Search uploaded documents for tax-related content using TF-IDF relevance scoring.
+                </p>
+                <Button
+                  onClick={() => searchTaxChunks()}
+                  disabled={isSearchingDocs}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs"
+                  size="sm"
+                >
+                  {isSearchingDocs ? <Loader2 className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                  {isSearchingDocs ? 'Searching...' : 'Search Tax Documents'}
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Tax Document Insights Card */}
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xs flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                Tax Document Insights
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const taxRelevantChunks = chunks.filter(c => {
+                  const lower = c.content.toLowerCase();
+                  return TAX_KEYWORDS.some(kw => lower.includes(kw));
+                });
+                const taxDocIds = [...new Set(taxRelevantChunks.map(c => c.documentId))];
+
+                if (chunks.length === 0) {
+                  return (
+                    <div className="text-center py-3">
+                      <FolderOpen className="w-6 h-6 mx-auto mb-2 text-muted-foreground/40" />
+                      <p className="text-[11px] text-muted-foreground">No documents uploaded yet.</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Upload financial documents to find tax-related content.</p>
+                    </div>
+                  );
+                }
+
+                if (taxRelevantChunks.length === 0) {
+                  return (
+                    <div className="text-center py-3">
+                      <Search className="w-6 h-6 mx-auto mb-2 text-muted-foreground/40" />
+                      <p className="text-[11px] text-muted-foreground">No tax-related content found.</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Upload tax documents, returns, or financial statements for analysis.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="text-lg font-bold text-emerald-600">{taxRelevantChunks.length}</div>
+                      <div className="text-[10px] text-muted-foreground">tax-relevant chunks across {taxDocIds.length} document(s)</div>
+                    </div>
+                    <div className="space-y-1">
+                      {taxDocIds.slice(0, 5).map((docId, i) => (
+                        <div key={i} className="flex items-center gap-1.5 text-[11px]">
+                          <FileText className="w-3 h-3 text-emerald-500 shrink-0" />
+                          <span className="text-muted-foreground truncate">{docId}</span>
+                          <Badge variant="secondary" className="text-[8px] h-3.5 ml-auto shrink-0">
+                            {taxRelevantChunks.filter(c => c.documentId === docId).length} chunks
+                          </Badge>
+                        </div>
+                      ))}
+                      {taxDocIds.length > 5 && (
+                        <div className="text-[10px] text-muted-foreground">+{taxDocIds.length - 5} more document(s)</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Tax Document Search Results */}
+        {showTaxDocResults && taxDocChunks.length > 0 && (
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35 }}>
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs flex items-center gap-2">
+                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                    Tax Document Results
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" onClick={() => setShowTaxDocResults(false)} className="h-5 text-[10px]">
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+                <CardDescription className="text-[10px]">{taxDocChunks.length} tax-relevant chunks found</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="max-h-[250px]">
+                  <div className="space-y-2">
+                    {taxDocChunks.map((chunk, i) => (
+                      <div key={i} className="p-2 rounded-lg border border-border bg-muted/30">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Badge variant="secondary" className="text-[8px] h-3.5">#{i + 1}</Badge>
+                          <Badge variant="outline" className="text-[8px] h-3.5">Score: {chunk.score}</Badge>
+                          {chunk.section && (
+                            <Badge variant="outline" className="text-[8px] h-3.5">{chunk.section}</Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed break-words">
+                          {chunk.content.slice(0, 200)}{chunk.content.length > 200 ? '...' : ''}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </div>
     </div>
   );
