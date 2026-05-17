@@ -14,6 +14,7 @@ import {
   CartesianGrid, Cell,
 } from 'recharts';
 import type { ChunkInfo, ComplianceFinding } from '@/types';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 
 // Constants
 
@@ -171,7 +172,11 @@ export default function ComplianceView({
           {summary && (
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><FileCheck className="w-4 h-4 text-emerald-600" />Scan Summary</CardTitle></CardHeader>
-              <CardContent><p className="text-sm whitespace-pre-wrap leading-relaxed">{summary}</p></CardContent>
+              <CardContent>
+                <ScrollArea className="max-h-[300px]">
+                  <MarkdownRenderer content={summary} />
+                </ScrollArea>
+              </CardContent>
             </Card>
           )}
         </>

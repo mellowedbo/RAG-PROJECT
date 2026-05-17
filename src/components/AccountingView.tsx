@@ -31,6 +31,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import type { JournalEntry, AccountingIssue, TrialBalanceEntry } from '@/types';
 
 // Constants — Account Catalog (Indian Accounting Context)
@@ -1705,29 +1706,8 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
               </CardHeader>
               <CardContent>
                 <ScrollArea className="max-h-[50vh]">
-                  <div className="prose prose-sm dark:prose-invert max-w-none pr-4 break-words">
-                    {aiAnalysis.split('\n').map((line, i) => {
-                      // Basic markdown-like rendering
-                      if (line.startsWith('## ')) {
-                        return <h2 key={i} className="text-base font-bold mt-4 mb-2 text-emerald-700 dark:text-emerald-400">{line.replace('## ', '')}</h2>;
-                      }
-                      if (line.startsWith('### ')) {
-                        return <h3 key={i} className="text-sm font-semibold mt-3 mb-1">{line.replace('### ', '')}</h3>;
-                      }
-                      if (line.startsWith('**') && line.endsWith('**')) {
-                        return <p key={i} className="text-xs font-bold mt-2">{line.replace(/\*\*/g, '')}</p>;
-                      }
-                      if (line.startsWith('- ')) {
-                        return <li key={i} className="text-xs ml-4 list-disc">{line.replace('- ', '')}</li>;
-                      }
-                      if (line.startsWith('1. ') || line.startsWith('2. ') || line.startsWith('3. ') || line.startsWith('4. ') || line.startsWith('5. ')) {
-                        return <li key={i} className="text-xs ml-4 list-decimal">{line.replace(/^\d+\.\s/, '')}</li>;
-                      }
-                      if (line.trim() === '') {
-                        return <div key={i} className="h-2" />;
-                      }
-                      return <p key={i} className="text-xs leading-relaxed">{line}</p>;
-                    })}
+                  <div className="pr-4">
+                    <MarkdownRenderer content={aiAnalysis} />
                   </div>
                 </ScrollArea>
               </CardContent>

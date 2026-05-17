@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
@@ -1582,7 +1583,13 @@ RULES:
                         ? 'bg-emerald-600 text-white rounded-br-none'
                         : 'bg-muted border border-border rounded-bl-none'
                     }`}>
-                      <div className="whitespace-pre-wrap break-words [overflow-wrap:break-word]">{msg.content}</div>
+                      <div className="break-words [overflow-wrap:break-word]">
+                        {msg.role === 'assistant' ? (
+                          <MarkdownRenderer content={msg.content} />
+                        ) : (
+                          <div className="whitespace-pre-wrap">{msg.content}</div>
+                        )}
+                      </div>
                       <div className={`text-[9px] mt-1 ${msg.role === 'user' ? 'text-emerald-200' : 'text-muted-foreground'}`}>
                         {msg.timestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                       </div>

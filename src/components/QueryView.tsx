@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import type { ChunkInfo, AgentStep, CitedChunk, QueryMetrics } from '@/types';
 
 interface QueryViewProps {
@@ -135,7 +136,7 @@ export default function QueryView({
             {result ? (
               <ScrollArea className="max-h-[500px]">
                 <div className="space-y-4 pr-3">
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap">{result}</div>
+                  <MarkdownRenderer content={result} />
                   {citedChunks.length > 0 && (
                     <div>
                       <Separator className="mb-3" />

@@ -27,6 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import type { FinancialRatio } from '@/types';
 
 // Constants — Financial Data Input Fields
@@ -1632,8 +1633,8 @@ EQUITY
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                     <Separator className="my-2" />
                     <ScrollArea className="max-h-[400px]">
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap pr-3 break-words [overflow-wrap:break-word]">
-                        {ragAnalysis}
+                      <div className="pr-3">
+                        <MarkdownRenderer content={ragAnalysis} />
                       </div>
                     </ScrollArea>
                   </motion.div>
@@ -1705,8 +1706,8 @@ EQUITY
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                     <Separator className="my-2" />
                     <ScrollArea className="max-h-[400px]">
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap pr-3 break-words [overflow-wrap:break-word]">
-                        {aiAnalysis}
+                      <div className="pr-3">
+                        <MarkdownRenderer content={aiAnalysis} />
                       </div>
                     </ScrollArea>
                   </motion.div>

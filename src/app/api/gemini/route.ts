@@ -10,17 +10,17 @@ import { checkRateLimit } from '@/lib/rateLimit';
 // Model Fallback Chain
 
 const MODEL_FALLBACK_CHAIN: Record<string, string[]> = {
-  'gemini-2.5-pro': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-2.5-flash': ['gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-2.5-pro-preview-05-06': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-2.5-flash-preview-05-20': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-2.0-flash': ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'],
-  'gemini-2.0-flash-lite': ['gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-1.5-flash': ['gemini-2.0-flash-lite', 'gemini-2.0-flash'],
-  'gemini-1.5-pro': ['gemini-2.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash'],
-  'gemma-3-27b-it': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemma-3-12b-it': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemma-3-4b-it': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+  'gemini-2.5-pro': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
+  'gemini-2.5-flash': ['gemini-2.0-flash', 'gemini-2.0-flash-lite'],
+  'gemini-2.5-pro-preview-05-06': ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+  'gemini-2.5-flash-preview-05-20': ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'],
+  'gemini-2.5-flash-lite-preview-06-17': ['gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash'],
+  'gemini-2.5-pro-preview-06-05': ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash'],
+  'gemini-2.0-flash': ['gemini-2.5-flash', 'gemini-2.0-flash-lite'],
+  'gemini-2.0-flash-lite': ['gemini-2.0-flash', 'gemini-2.5-flash'],
+  'gemma-3-27b-it': ['gemini-2.5-flash', 'gemini-2.0-flash'],
+  'gemma-3-12b-it': ['gemini-2.5-flash', 'gemini-2.0-flash'],
+  'gemma-3-4b-it': ['gemini-2.5-flash', 'gemini-2.0-flash'],
 };
 
 /** Status codes that trigger a fallback to the next model */
@@ -159,10 +159,10 @@ export async function POST(request: NextRequest) {
           'gemini-2.5-pro': 65536,
           'gemini-2.5-flash-preview-05-20': 65536,
           'gemini-2.5-pro-preview-05-06': 65536,
+          'gemini-2.5-flash-lite-preview-06-17': 65536,
+          'gemini-2.5-pro-preview-06-05': 65536,
           'gemini-2.0-flash': 8192,
           'gemini-2.0-flash-lite': 8192,
-          'gemini-1.5-flash': 8192,
-          'gemini-1.5-pro': 8192,
           'gemma-3-27b-it': 8192,
           'gemma-3-12b-it': 8192,
           'gemma-3-4b-it': 8192,

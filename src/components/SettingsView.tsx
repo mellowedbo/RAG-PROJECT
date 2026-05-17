@@ -454,57 +454,192 @@ export default function SettingsView({
 
             <Separator />
 
-            {/* Generation Models */}
+            {/* Generation Models — Grouped by Tier */}
             <div>
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Brain className="w-3 h-3" /> Generation Models
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {GENERATION_MODELS.map((model) => (
-                  <motion.div
-                    key={model.id}
-                    whileHover={{ scale: 1.01 }}
-                    className={`p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
-                      config.generationModel === model.id
-                        ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
-                        : 'border-border hover:border-emerald-500/30'
-                    }`}
-                    onClick={() => updateConfig({ generationModel: model.id })}
-                  >
-                    <div className="flex items-start justify-between mb-1.5">
-                      <div className="min-w-0 overflow-hidden">
-                        <div className="text-sm font-semibold flex items-center gap-1.5 truncate">
-                          {model.name}
-                          {model.isRecommended && (
-                            <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5 shrink-0">
-                              <Sparkles className="w-2.5 h-2.5" /> Recommended
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-muted-foreground font-mono truncate">{model.id}</div>
+              <div className="space-y-4">
+                {/* Stable tier */}
+                {(() => {
+                  const stableModels = GENERATION_MODELS.filter(m => m.tier === 'stable');
+                  return stableModels.length > 0 ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5">
+                          <CheckCircle2 className="w-2.5 h-2.5" /> Stable — Production Ready
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">Widely available, reliable for all users</span>
                       </div>
-                      {config.generationModel === model.id && (
-                        <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {stableModels.map((model) => (
+                          <motion.div
+                            key={model.id}
+                            whileHover={{ scale: 1.01 }}
+                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
+                              config.generationModel === model.id
+                                ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20'
+                                : 'border-border hover:border-emerald-500/30'
+                            }`}
+                            onClick={() => updateConfig({ generationModel: model.id })}
+                          >
+                            <div className="flex items-start justify-between mb-1.5">
+                              <div className="min-w-0 overflow-hidden">
+                                <div className="text-sm font-semibold flex items-center gap-1.5 truncate">
+                                  {model.name}
+                                  {model.isRecommended && (
+                                    <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5 shrink-0">
+                                      <Sparkles className="w-2.5 h-2.5" /> Recommended
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground font-mono truncate">{model.id}</div>
+                              </div>
+                              {config.generationModel === model.id && (
+                                <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center shrink-0">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2 leading-relaxed break-words">{model.description}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {model.maxTokens && (
+                                <Badge variant="secondary" className="text-[9px] gap-0.5">
+                                  <Zap className="w-2.5 h-2.5" /> {model.maxTokens >= 1000 ? `${(model.maxTokens / 1000).toFixed(0)}K` : model.maxTokens} output
+                                </Badge>
+                              )}
+                              {model.isMultimodal && (
+                                <Badge variant="secondary" className="text-[9px] gap-0.5 bg-purple-50 dark:bg-purple-950/30 text-purple-600">
+                                  <ImageIcon className="w-2.5 h-2.5" /> Multimodal
+                                </Badge>
+                              )}
+                              {getModelAvailabilityBadge(model.id, healthResults, model.isDeprecated)}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2 leading-relaxed break-words">{model.description}</p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {model.maxTokens && (
-                        <Badge variant="secondary" className="text-[9px] gap-0.5">
-                          <Zap className="w-2.5 h-2.5" /> {model.maxTokens >= 1000 ? `${(model.maxTokens / 1000).toFixed(0)}K` : model.maxTokens} output
+                  ) : null;
+                })()}
+
+                {/* Experimental tier */}
+                {(() => {
+                  const expModels = GENERATION_MODELS.filter(m => m.tier === 'experimental');
+                  return expModels.length > 0 ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className="text-[9px] h-4 bg-amber-500 gap-0.5 text-white">
+                          <FlaskConical className="w-2.5 h-2.5" /> Experimental
                         </Badge>
-                      )}
-                      {model.isMultimodal && (
-                        <Badge variant="secondary" className="text-[9px] gap-0.5 bg-purple-50 dark:bg-purple-950/30 text-purple-600">
-                          <ImageIcon className="w-2.5 h-2.5" /> Multimodal
-                        </Badge>
-                      )}
-                      {getModelAvailabilityBadge(model.id, healthResults, model.isDeprecated)}
+                        <span className="text-[10px] text-muted-foreground">May not be available in all regions — test first</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {expModels.map((model) => (
+                          <motion.div
+                            key={model.id}
+                            whileHover={{ scale: 1.01 }}
+                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
+                              config.generationModel === model.id
+                                ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20'
+                                : 'border-border hover:border-amber-500/30'
+                            }`}
+                            onClick={() => updateConfig({ generationModel: model.id })}
+                          >
+                            <div className="flex items-start justify-between mb-1.5">
+                              <div className="min-w-0 overflow-hidden">
+                                <div className="text-sm font-semibold flex items-center gap-1.5 truncate">
+                                  {model.name}
+                                  {model.isRecommended && (
+                                    <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5 shrink-0">
+                                      <Sparkles className="w-2.5 h-2.5" /> Recommended
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground font-mono truncate">{model.id}</div>
+                              </div>
+                              {config.generationModel === model.id && (
+                                <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2 leading-relaxed break-words">{model.description}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {model.maxTokens && (
+                                <Badge variant="secondary" className="text-[9px] gap-0.5">
+                                  <Zap className="w-2.5 h-2.5" /> {model.maxTokens >= 1000 ? `${(model.maxTokens / 1000).toFixed(0)}K` : model.maxTokens} output
+                                </Badge>
+                              )}
+                              {model.isMultimodal && (
+                                <Badge variant="secondary" className="text-[9px] gap-0.5 bg-purple-50 dark:bg-purple-950/30 text-purple-600">
+                                  <ImageIcon className="w-2.5 h-2.5" /> Multimodal
+                                </Badge>
+                              )}
+                              {getModelAvailabilityBadge(model.id, healthResults, model.isDeprecated)}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
                     </div>
-                  </motion.div>
-                ))}
+                  ) : null;
+                })()}
+
+                {/* Open-Weight tier */}
+                {(() => {
+                  const owModels = GENERATION_MODELS.filter(m => m.tier === 'open-weight');
+                  return owModels.length > 0 ? (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className="text-[9px] h-4 bg-violet-600 gap-0.5 text-white">
+                          <Cpu className="w-2.5 h-2.5" /> Open-Weight / Gemma
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">Self-hostable models — availability varies by region, test before use</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {owModels.map((model) => (
+                          <motion.div
+                            key={model.id}
+                            whileHover={{ scale: 1.01 }}
+                            className={`p-3 rounded-lg border-2 cursor-pointer transition-all overflow-hidden ${
+                              config.generationModel === model.id
+                                ? 'border-violet-500 bg-violet-50/50 dark:bg-violet-950/20'
+                                : 'border-border hover:border-violet-500/30'
+                            }`}
+                            onClick={() => updateConfig({ generationModel: model.id })}
+                          >
+                            <div className="flex items-start justify-between mb-1.5">
+                              <div className="min-w-0 overflow-hidden">
+                                <div className="text-sm font-semibold flex items-center gap-1.5 truncate">
+                                  {model.name}
+                                  {model.isRecommended && (
+                                    <Badge className="text-[9px] h-4 bg-emerald-600 gap-0.5 shrink-0">
+                                      <Sparkles className="w-2.5 h-2.5" /> Recommended
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-muted-foreground font-mono truncate">{model.id}</div>
+                              </div>
+                              {config.generationModel === model.id && (
+                                <div className="w-5 h-5 rounded-full bg-violet-600 flex items-center justify-center shrink-0">
+                                  <Check className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-2 leading-relaxed break-words">{model.description}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {model.maxTokens && (
+                                <Badge variant="secondary" className="text-[9px] gap-0.5">
+                                  <Zap className="w-2.5 h-2.5" /> {model.maxTokens >= 1000 ? `${(model.maxTokens / 1000).toFixed(0)}K` : model.maxTokens} output
+                                </Badge>
+                              )}
+                              {getModelAvailabilityBadge(model.id, healthResults, model.isDeprecated)}
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
 
