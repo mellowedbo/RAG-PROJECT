@@ -14,33 +14,33 @@ interface MarkdownRendererProps {
  */
 export default function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
   return (
-    <div className={`prose prose-sm dark:prose-invert max-w-none break-words [overflow-wrap:break-word] overflow-x-auto ${className}`}>
+    <div className={`prose prose-sm dark:prose-invert max-w-none break-words [overflow-wrap:break-word] overflow-x-auto prose-p:my-1 prose-headings:mt-3 prose-headings:mb-1.5 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-pre:my-2 prose-table:my-2 ${className}`}>
       <ReactMarkdown
         components={{
           // Headings
           h1: ({ children }) => (
-            <h1 className="text-lg font-bold mt-5 mb-3 text-emerald-700 dark:text-emerald-400 border-b border-border pb-2">
+            <h1 className="text-lg font-bold mt-3 mb-2 text-emerald-700 dark:text-emerald-400 border-b border-border pb-1.5">
               {children}
             </h1>
           ),
           h2: ({ children }) => (
-            <h2 className="text-base font-bold mt-4 mb-2 text-emerald-700 dark:text-emerald-400">
+            <h2 className="text-base font-bold mt-3 mb-1.5 text-emerald-700 dark:text-emerald-400">
               {children}
             </h2>
           ),
           h3: ({ children }) => (
-            <h3 className="text-sm font-semibold mt-3 mb-1.5 text-foreground">
+            <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground">
               {children}
             </h3>
           ),
           h4: ({ children }) => (
-            <h4 className="text-sm font-semibold mt-2 mb-1 text-muted-foreground">
+            <h4 className="text-sm font-semibold mt-1.5 mb-0.5 text-muted-foreground">
               {children}
             </h4>
           ),
           // Paragraphs
           p: ({ children }) => (
-            <p className="text-sm leading-relaxed my-1.5">{children}</p>
+            <p className="text-sm leading-relaxed my-1">{children}</p>
           ),
           // Bold
           strong: ({ children }) => (

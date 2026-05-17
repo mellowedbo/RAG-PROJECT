@@ -104,8 +104,8 @@ export default function QueryView({
           </CardContent>
         </Card>
 
-        <Card className="min-h-[300px]">
-          <CardHeader className="pb-2">
+        <Card className="min-h-[300px] max-h-[75vh] flex flex-col">
+          <CardHeader className="pb-2 shrink-0">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-emerald-500" />
@@ -119,7 +119,7 @@ export default function QueryView({
               )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 overflow-hidden min-h-0">
             {error && (
               <div className="text-sm text-red-600 flex items-center gap-2 mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/20">
                 <AlertCircle className="w-4 h-4 shrink-0" />{error}
@@ -134,7 +134,7 @@ export default function QueryView({
             )}
 
             {result ? (
-              <ScrollArea className="max-h-[500px]">
+              <ScrollArea className="h-full">
                 <div className="space-y-4 pr-3">
                   <MarkdownRenderer content={result} />
                   {citedChunks.length > 0 && (
@@ -175,15 +175,15 @@ export default function QueryView({
 
       {/* Agent trace sidebar */}
       <div className="lg:col-span-2">
-        <Card className="h-full">
-          <CardHeader className="pb-2">
+        <Card className="h-full max-h-[75vh] flex flex-col">
+          <CardHeader className="pb-2 shrink-0">
             <CardTitle className="text-sm flex items-center gap-2">
               <Activity className="w-4 h-4 text-emerald-500" />
               Agent Execution Trace
             </CardTitle>
             <p className="text-xs text-muted-foreground">Real-time RAG pipeline status</p>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 flex-1 overflow-y-auto min-h-0">
             {agentSteps.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-8">Start an analysis to see the agent trace</div>
             ) : (

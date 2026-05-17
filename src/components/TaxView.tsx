@@ -1084,7 +1084,7 @@ function GSTTab() {
               <CardDescription className="text-xs">Common items under each GST slab</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 overflow-hidden">
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {GST_RATE_ITEMS.map((item) => (
                   <div key={item.rate} className="border rounded-lg overflow-hidden">
                     <button
@@ -1110,7 +1110,7 @@ function GSTTab() {
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="overflow-hidden"
+                          className="overflow-y-auto max-h-[150px]"
                         >
                           <div className="px-3 pb-3 flex flex-wrap gap-1.5">
                             {item.items.map((i) => (
@@ -1511,8 +1511,8 @@ RULES:
       {/* Chat Area */}
       <div className="lg:col-span-3 space-y-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="min-h-[500px] flex flex-col">
-            <CardHeader className="pb-3">
+          <Card className="min-h-[500px] max-h-[80vh] flex flex-col">
+            <CardHeader className="pb-3 shrink-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-600" />

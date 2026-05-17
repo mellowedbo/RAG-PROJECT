@@ -1697,15 +1697,15 @@ Total credit balance: ₹${trialBalance.reduce((s, t) => s + t.credit, 0).toLoca
           )}
 
           {aiAnalysis && !isAnalyzing && (
-            <Card className="border-emerald-600/20">
-              <CardHeader className="pb-2">
+            <Card className="border-emerald-600/20 max-h-[70vh] flex flex-col">
+              <CardHeader className="pb-2 shrink-0">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <MessageSquareQuote className="w-4 h-4 text-emerald-600" />
                   AI Analysis Report
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="max-h-[50vh]">
+              <CardContent className="flex-1 overflow-hidden min-h-0">
+                <ScrollArea className="h-full">
                   <div className="pr-4">
                     <MarkdownRenderer content={aiAnalysis} />
                   </div>

@@ -84,10 +84,10 @@ export default function ColabView({
         ))}
       </div>
 
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Code2 className="w-4 h-4 text-emerald-600" />Complete Notebook Code</CardTitle></CardHeader>
-        <CardContent>
-          <ScrollArea className="max-h-[500px]">
+      <Card className="max-h-[70vh] flex flex-col">
+        <CardHeader className="pb-2 shrink-0"><CardTitle className="text-sm flex items-center gap-2"><Code2 className="w-4 h-4 text-emerald-600" />Complete Notebook Code</CardTitle></CardHeader>
+        <CardContent className="flex-1 overflow-hidden min-h-0">
+          <ScrollArea className="h-full">
             <pre className="text-xs font-mono leading-relaxed p-4 rounded-lg bg-muted/50 overflow-x-auto">
               <code>{colabCode}</code>
             </pre>

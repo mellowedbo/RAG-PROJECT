@@ -1108,9 +1108,9 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
         <TabsContent value="calculator" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Input Panel */}
-            <div className="lg:col-span-1 space-y-4 min-w-0">
-              <Card>
-                <CardHeader className="pb-3">
+            <div className="lg:col-span-1 min-w-0">
+              <Card className="max-h-[80vh] flex flex-col">
+                <CardHeader className="pb-3 shrink-0">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Calculator className="w-4 h-4 text-emerald-600" />
                     Financial Data Input
@@ -1119,8 +1119,8 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                     Enter values to auto-calculate all ratios
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <ScrollArea className="max-h-[50vh] pr-3">
+                <CardContent className="flex-1 overflow-hidden min-h-0">
+                  <ScrollArea className="h-full pr-3">
                     <div className="space-y-4">
                       {/* Income Statement Group */}
                       <div>
@@ -1205,8 +1205,8 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
 
             {/* Ratios Results Panel */}
             <div className="lg:col-span-2">
-              <Card>
-                <CardHeader className="pb-3">
+              <Card className="max-h-[80vh] flex flex-col">
+                <CardHeader className="pb-3 shrink-0">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <BarChart3 className="w-4 h-4 text-emerald-600" />
@@ -1219,7 +1219,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                     )}
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1 overflow-hidden min-h-0">
                   {calculatedRatios.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                       <Calculator className="w-10 h-10 mb-3 opacity-30" />
@@ -1227,7 +1227,7 @@ Provide a comprehensive SWOT financial analysis with industry comparison and act
                       <p className="text-xs mt-1 opacity-70">All ratios update automatically as you type</p>
                     </div>
                   ) : (
-                    <ScrollArea className="max-h-[50vh]">
+                    <ScrollArea className="h-full">
                       <div className="space-y-4 pr-3">
                         {/* Group ratios by category */}
                         {(['liquidity', 'profitability', 'leverage', 'efficiency', 'market'] as const).map(category => {
@@ -1570,8 +1570,8 @@ EQUITY
         <TabsContent value="ai-analysis" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* RAG-Powered Document Analysis */}
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="max-h-[80vh] flex flex-col">
+              <CardHeader className="pb-3 shrink-0">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-emerald-600" />
                   RAG Document Analysis
@@ -1580,7 +1580,7 @@ EQUITY
                   Search uploaded documents for financial data, extract numbers, and generate AI analysis
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 flex-1 overflow-y-auto min-h-0">
                 {/* Document Status */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -1606,7 +1606,7 @@ EQUITY
                 <Button
                   onClick={handleRAGAnalysis}
                   disabled={isRagAnalyzing || chunks.length === 0}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0"
                 >
                   {isRagAnalyzing ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1643,8 +1643,8 @@ EQUITY
             </Card>
 
             {/* AI Financial Advisor */}
-            <Card>
-              <CardHeader className="pb-3">
+            <Card className="max-h-[80vh] flex flex-col">
+              <CardHeader className="pb-3 shrink-0">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Brain className="w-4 h-4 text-emerald-600" />
                   AI Financial Advisor
@@ -1653,7 +1653,7 @@ EQUITY
                   Get SWOT-style financial analysis, industry comparison, and actionable recommendations
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-3 flex-1 overflow-y-auto min-h-0">
                 {/* Current Ratios Summary */}
                 {calculatedRatios.length > 0 ? (
                   <div className="p-3 rounded-lg bg-muted/50 space-y-2">
